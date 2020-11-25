@@ -43,7 +43,7 @@ namespace frankalwi
         }
         else
         {
-            std::cerr << "Robot not connected firs call the init function" << std::endl;
+            std::cerr << "Robot not connected first call the init function" << std::endl;
         }
     }
 
