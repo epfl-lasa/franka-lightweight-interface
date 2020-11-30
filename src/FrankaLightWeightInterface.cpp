@@ -3,7 +3,7 @@
 namespace frankalwi
 {
     FrankaLightWeightInterface::FrankaLightWeightInterface(const std::string & robot_ip):
-    robot_ip_(robot_ip), connected_(false), shutdown_(false)
+    robot_ip_(robot_ip), connected_(false), shutdown_(false), zmq_context_(1)
     {}
 
     void FrankaLightWeightInterface::init()
@@ -12,6 +12,11 @@ namespace frankalwi
         this->franka_robot_ = std::make_unique<franka::Robot>(this->robot_ip_);
         this->franka_model_ = std::make_unique<franka::Model>(this->franka_robot_->loadModel());
         this->connected_ = true;
+
+        // create zmq connections with an external controller
+        // TODO: find a better way to pass in port number
+        this->zmq_publisher_ = proto::bindPublisher(this->zmq_context_, "tcp://*:5563");
+        this->zmq_subscriber_ = proto::connectSubscriber(this->zmq_context_, "tcp://localhost:5564");
 
         this->current_cartesian_twist_.setZero();
         this->current_cartesian_wrench_.setZero();
@@ -45,6 +50,48 @@ namespace frankalwi
         {
             std::cerr << "Robot not connected first call the init function" << std::endl;
         }
+    }
+
+    void FrankaLightWeightInterface::poll_external_command() {
+      if (proto::poll(this->zmq_subscriber_, this->zmq_command_msg_)) {
+        //TODO: use eigen map to copy std::array command message onto eigen matrix
+        for (std::size_t joint = 0; joint < 7; ++joint) {
+          this->command_joint_torques_[joint] = this->zmq_command_msg_.jointTorque[joint];
+        }
+      }
+    }
+
+    void FrankaLightWeightInterface::publish_robot_state() {
+      //TODO: use eigen map and / or custom mapping utils to simplify this
+      for (std::size_t joint = 0; joint < 7; ++joint) {
+        this->zmq_state_msg_.jointPosition[joint] = this->current_joint_positions_[joint];
+        this->zmq_state_msg_.jointVelocity[joint] = this->current_joint_velocities_[joint];
+        this->zmq_state_msg_.jointTorque[joint] = this->current_joint_torques_[joint];
+      }
+
+      this->zmq_state_msg_.eePose.position.x = this->current_cartesian_position_.x();
+      this->zmq_state_msg_.eePose.position.y = this->current_cartesian_position_.y();
+      this->zmq_state_msg_.eePose.position.z = this->current_cartesian_position_.z();
+      this->zmq_state_msg_.eePose.orientation.w = this->current_cartesian_orientation_.w();
+      this->zmq_state_msg_.eePose.orientation.x = this->current_cartesian_orientation_.x();
+      this->zmq_state_msg_.eePose.orientation.y = this->current_cartesian_orientation_.y();
+      this->zmq_state_msg_.eePose.orientation.z = this->current_cartesian_orientation_.z();
+
+      this->zmq_state_msg_.eeTwist.linear.x = this->current_cartesian_twist_[0];
+      this->zmq_state_msg_.eeTwist.linear.y = this->current_cartesian_twist_[1];
+      this->zmq_state_msg_.eeTwist.linear.z = this->current_cartesian_twist_[2];
+      this->zmq_state_msg_.eeTwist.angular.x = this->current_cartesian_twist_[3];
+      this->zmq_state_msg_.eeTwist.angular.y = this->current_cartesian_twist_[4];
+      this->zmq_state_msg_.eeTwist.angular.z = this->current_cartesian_twist_[5];
+
+      this->zmq_state_msg_.eeWrench.linear.x = this->current_cartesian_wrench_[0];
+      this->zmq_state_msg_.eeWrench.linear.y = this->current_cartesian_wrench_[1];
+      this->zmq_state_msg_.eeWrench.linear.z = this->current_cartesian_wrench_[2];
+      this->zmq_state_msg_.eeWrench.angular.x = this->current_cartesian_wrench_[3];
+      this->zmq_state_msg_.eeWrench.angular.y = this->current_cartesian_wrench_[4];
+      this->zmq_state_msg_.eeWrench.angular.z = this->current_cartesian_wrench_[5];
+
+      proto::send(this->zmq_publisher_, this->zmq_state_msg_);
     }
 
     void FrankaLightWeightInterface::read_robot_state(const franka::RobotState& robot_state)
@@ -85,6 +132,9 @@ namespace frankalwi
         {
             this->franka_robot_->control([this, d_gains](const franka::RobotState& robot_state, franka::Duration) -> franka::Torques
             {
+                // check the local socket for a torque command
+                this->poll_external_command();
+
                 // lock mutex
                 std::lock_guard<std::mutex> lock(this->get_mutex());
                 // extract current state
@@ -98,6 +148,10 @@ namespace frankalwi
                 Eigen::VectorXd::Map(&torques[0], 7) = this->command_joint_torques_.array()
                                                        - d_gains * current_joint_velocities_.array()
                                                        + coriolis.array();
+
+                // write the state out to the local socket
+                this->publish_robot_state();
+
                 //return torques;
                 return torques;
             });

@@ -29,7 +29,7 @@ git submodule init && git submodule update
 The building process relies on cmake. You first need to build and install [libfranka](https://frankaemika.github.io/docs/libfranka.html) following the recomendation from the website. First download the required packages:
 
 ```bash
-sudo apt install build-essential cmake git libpoco-dev libeigen3-dev
+sudo apt install build-essential cmake git libpoco-dev libeigen3-dev libtool
 ```
 
 Then build and install the library
@@ -37,6 +37,46 @@ Then build and install the library
 ```bash
 cd lib/libfranka && mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && make -j && sudo make install && sudo ldconfig
 ```
+
+
+You also need to install libZMQ with C++ bindings, which in turn depends on libsodium. 
+
+```bash
+# install libsodium
+RUN wget https://download.libsodium.org/libsodium/releases/libsodium-1.0.18.tar.gz \
+  && tar -xzf libsodium-1.0.18.tar.gz \
+  && cd libsodium-1.0.18 \
+  && ./autogen.sh \
+  && ./configure \
+  && make check \
+  && sudo make install \
+  && sudo ldconfig \
+  && cd .. \
+  && rm -rf libsodium*
+
+# install base libzmq
+RUN wget https://github.com/zeromq/libzmq/releases/download/v4.3.3/zeromq-4.3.3.tar.gz \
+  && tar -xzf zeromq-4.3.3.tar.gz \
+  && cd zeromq-4.3.3 \
+  && mkdir build \
+  && cd build \
+  && cmake .. -DWITH_PERF_TOOL=OFF -DZMQ_BUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release \
+  && sudo make -j4 install \
+  && cd ../.. \
+  && rm -rf zeromq*
+
+# install cppzmq bindings
+RUN wget https://github.com/zeromq/cppzmq/archive/v4.7.1.tar.gz -O cppzmq-4.7.1.tar.gz \
+  && tar -xzf cppzmq-4.7.1.tar.gz \
+  && cd cppzmq-4.7.1 \
+  && mkdir build \
+  && cd build \
+  && cmake .. -DCPPZMQ_BUILD_TESTS=OFF \
+  && sudo make -j4 install \
+  && cd ../.. \
+  && rm -rf cppzmq*
+```
+
 
 Finally build the interface with:
 
