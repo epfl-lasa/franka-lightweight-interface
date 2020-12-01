@@ -18,7 +18,8 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   	add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-find_package(Eigen3 cppzmq REQUIRED)
+find_package(Eigen3 REQUIRED)
+find_package(cppzmq REQUIRED)
 
 include_directories(
  	include

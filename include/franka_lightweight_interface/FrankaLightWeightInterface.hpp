@@ -11,7 +11,8 @@
 #include <mutex>
 #include <thread>
 
-#include "franka_lwi_communication_protocol.h"
+#include "franka_lightweight_interface/franka_lwi_communication_protocol.h"
+
 
 namespace frankalwi
 {

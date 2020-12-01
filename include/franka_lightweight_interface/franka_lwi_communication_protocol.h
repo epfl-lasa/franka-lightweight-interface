@@ -3,8 +3,7 @@
 #include <zmq.hpp>
 #include <array>
 
-namespace frankalwi {
-namespace proto {
+namespace frankalwi::proto {
 
 // --- Message sub-structures --- //
 template<std::size_t DOF>
@@ -47,6 +46,7 @@ struct StateMessage {
   Joints<DOF> jointTorque;
   EEPose eePose;
   EETwist eeTwist;
+  EETwist eeWrench;
 };
 
 template<std::size_t DOF>
@@ -56,20 +56,6 @@ struct CommandMessage {
 
 
 // --- Communication helpers --- //
-
-zmq::socket_t bindPublisher(zmq::context_t& context, const char* address) {
-  zmq::socket_t publisher(context, ZMQ_PUB);
-  publisher.bind(address);
-  return publisher;
-}
-
-zmq::socket_t connectSubscriber(zmq::context_t& context, const char* address) {
-  zmq::socket_t subscriber(context, ZMQ_SUB);
-  subscriber.set(zmq::sockopt::conflate, 1);
-  subscriber.set(zmq::sockopt::subscribe, "");
-  subscriber.connect(address);
-  return subscriber;
-}
 
 template<typename T>
 bool send(zmq::socket_t& publisher, const T& obj) {
@@ -95,5 +81,4 @@ bool poll(zmq::socket_t& subscriber, T& obj) {
   return receive(subscriber, obj, zmq::recv_flags::dontwait);
 }
 
-}
 }

@@ -15,9 +15,14 @@ namespace frankalwi
 
         // create zmq connections with an external controller
         // TODO: find a better way to pass in port number
-        this->zmq_publisher_ = proto::bindPublisher(this->zmq_context_, "tcp://*:5563");
-        this->zmq_subscriber_ = proto::connectSubscriber(this->zmq_context_, "tcp://localhost:5564");
+        this->zmq_publisher_ = zmq::socket_t(this->zmq_context_, ZMQ_PUB);
+        this->zmq_publisher_.bind("tcp://*:5563");
 
+        this->zmq_subscriber_ = zmq::socket_t(this->zmq_context_, ZMQ_SUB);
+        this->zmq_subscriber_.set(zmq::sockopt::conflate, 1);
+        this->zmq_subscriber_.set(zmq::sockopt::subscribe, "");
+        this->zmq_subscriber_.connect("tcp://localhost:5564");
+        
         this->current_cartesian_twist_.setZero();
         this->current_cartesian_wrench_.setZero();
         this->current_joint_positions_.setZero();
