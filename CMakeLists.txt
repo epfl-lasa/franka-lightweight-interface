@@ -19,6 +19,7 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 find_package(Eigen3 REQUIRED)
+find_package(cppzmq REQUIRED)
 
 include_directories(
  	include
@@ -32,7 +33,7 @@ set(CORE_SOURCES
 
 add_executable (${PROJECT_NAME} ${CORE_SOURCES})
 
-target_link_libraries(${PROJECT_NAME} franka Eigen3::Eigen)
+target_link_libraries(${PROJECT_NAME} franka Eigen3::Eigen cppzmq)
 
 install(DIRECTORY include/
   	DESTINATION include

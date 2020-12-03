@@ -6,7 +6,7 @@
 
 using namespace frankalwi;
 
-int main(int argc, char * argv[])
+int main(int, char**)
 {
     std::string robot_ip = "172.16.0.2";
     FrankaLightWeightInterface flwi(robot_ip);

@@ -11,6 +11,9 @@
 #include <mutex>
 #include <thread>
 
+#include "franka_lightweight_interface/franka_lwi_communication_protocol.h"
+
+
 namespace frankalwi
 {
     /**
@@ -26,6 +29,11 @@ namespace frankalwi
         std::unique_ptr<franka::Model> franka_model_; ///< model object of the robot
         bool connected_;
         bool shutdown_;
+        zmq::context_t zmq_context_;
+        zmq::socket_t zmq_publisher_;
+        zmq::socket_t zmq_subscriber_;
+        proto::CommandMessage<7> zmq_command_msg_;
+        proto::StateMessage<7> zmq_state_msg_;
         Eigen::Vector3d current_cartesian_position_;
         Eigen::Quaterniond current_cartesian_orientation_;
         Eigen::Matrix<double, 6, 1> current_cartesian_twist_;
@@ -75,6 +83,16 @@ namespace frankalwi
         void run_controller();
 
         /**
+         * @brief Poll the ZMQ socket subscription for a new joint torque command from an external controller
+         */
+        void poll_external_command();
+
+        /**
+        * @brief Publish robot state to the ZMQ socket for an external controller or observer to receive
+        */
+        void publish_robot_state();
+
+        /**
          * @brief Read the robot state and update the published elements
          * @param robot_state the Franka robot state to read and get velues from
          */
@@ -85,6 +103,8 @@ namespace frankalwi
          * that reads commands from the joint torques subscription
          */
         void run_joint_torques_controller();
+
+
     };
 
     inline bool FrankaLightWeightInterface::is_connected() const
