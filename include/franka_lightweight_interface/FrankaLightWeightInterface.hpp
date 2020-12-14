@@ -10,6 +10,7 @@
 #include <iostream>
 #include <mutex>
 #include <thread>
+#include <chrono>
 
 #include "franka_lightweight_interface/franka_lwi_communication_protocol.h"
 
@@ -40,6 +41,8 @@ private:
   Eigen::Matrix<double, 7, 1> current_joint_torques_;
   Eigen::Matrix<double, 6, 7> current_jacobian_;
   Eigen::Matrix<double, 7, 1> command_joint_torques_;
+  std::chrono::steady_clock::time_point last_command_;
+  std::chrono::milliseconds command_timeout_ = std::chrono::milliseconds(500);
   std::mutex mutex_;
 
   void print_state() const;
