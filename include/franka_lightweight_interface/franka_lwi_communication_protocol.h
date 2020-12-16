@@ -37,6 +37,9 @@ struct EETwist {
   Vec3D angular{};
 };
 
+template<std::size_t DOF>
+using Jacobian = std::array<Joints<DOF>, 6>;
+
 
 // --- Message structures --- //
 template<std::size_t DOF>
@@ -47,6 +50,7 @@ struct StateMessage {
   EEPose eePose;
   EETwist eeTwist;
   EETwist eeWrench;
+  Jacobian<DOF> jacobian;
 };
 
 template<std::size_t DOF>
