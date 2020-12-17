@@ -44,6 +44,9 @@ void FrankaLightWeightInterface::run_controller() {
         std::cerr << e.what() << std::endl;
       }
       std::cerr << "Controller stopped but the node is still active, restarting..." << std::endl;
+      //flush and reset any remaining command messages
+      proto::poll(this->zmq_subscriber_, this->zmq_command_msg_);
+      this->command_joint_torques_.setZero();
       std::this_thread::sleep_for(std::chrono::seconds(1));
     }
   } else {
