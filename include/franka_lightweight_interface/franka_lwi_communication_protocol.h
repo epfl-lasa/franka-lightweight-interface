@@ -40,6 +40,9 @@ struct EETwist {
 template<std::size_t DOF>
 using Jacobian = std::array<Joints<DOF>, 6>;
 
+template<std::size_t DOF>
+using Mass = std::array<float, DOF*DOF>;
+
 
 // --- Message structures --- //
 template<std::size_t DOF>
@@ -51,6 +54,7 @@ struct StateMessage {
   EETwist eeTwist;
   EETwist eeWrench;
   Jacobian<DOF> jacobian;
+  Mass<DOF> mass;
 };
 
 template<std::size_t DOF>
