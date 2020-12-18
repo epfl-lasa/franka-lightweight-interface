@@ -40,6 +40,8 @@ private:
   Eigen::Matrix<double, 7, 1> current_joint_velocities_;
   Eigen::Matrix<double, 7, 1> current_joint_torques_;
   Eigen::Matrix<double, 6, 7> current_jacobian_;
+  std::array<double, 49> current_mass_array_;
+  Eigen::Matrix<double, 7, 7> current_mass_;
   Eigen::Matrix<double, 7, 1> command_joint_torques_;
   std::chrono::steady_clock::time_point last_command_;
   std::chrono::milliseconds command_timeout_ = std::chrono::milliseconds(500);

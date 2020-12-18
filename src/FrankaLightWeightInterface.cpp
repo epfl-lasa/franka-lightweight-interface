@@ -78,6 +78,7 @@ void FrankaLightWeightInterface::publish_robot_state() {
       this->zmq_state_msg_.jacobian[dof][joint] = this->current_jacobian_(dof, joint);
     }
   }
+  std::copy(this->current_mass_array_.begin(), this->current_mass_array_.end(), this->zmq_state_msg_.mass.begin());
 
   this->zmq_state_msg_.eePose.position.x = this->current_cartesian_position_.x();
   this->zmq_state_msg_.eePose.position.y = this->current_cartesian_position_.y();
@@ -121,6 +122,9 @@ void FrankaLightWeightInterface::read_robot_state(const franka::RobotState& robo
   std::array<double, 42> jacobian_array = this->franka_model_->zeroJacobian(franka::Frame::kEndEffector, robot_state);
   this->current_jacobian_ = Eigen::Map<const Eigen::Matrix<double, 6, 7> >(jacobian_array.data());
 
+  this->current_mass_array_ = this->franka_model_->mass(robot_state);
+  this->current_mass_ = Eigen::Map<const Eigen::Matrix<double, 7, 7> >(this->current_mass_array_.data());
+
   // get the twist from jacobian and current joint velocities
   this->current_cartesian_twist_ = this->current_jacobian_ * this->current_joint_velocities_;
 
@@ -155,6 +159,10 @@ void FrankaLightWeightInterface::run_joint_torques_controller() {
       std::array<double, 7> coriolis_array = this->franka_model_->coriolis(robot_state);
       Eigen::Map<const Eigen::Matrix<double, 7, 1> > coriolis(coriolis_array.data());
 
+      // get the mass matrix
+      std::array<double, 49> mass_array = franka_model_->mass(robot_state);
+      Eigen::Map<const Eigen::Matrix<double, 7, 7> > mass(mass_array.data());
+      
       std::array<double, 7> torques{};
       Eigen::VectorXd::Map(&torques[0], 7) = this->command_joint_torques_.array()
           - d_gains * current_joint_velocities_.array()
