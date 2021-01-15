@@ -28,6 +28,8 @@ void FrankaLightWeightInterface::init() {
   this->current_joint_velocities_.setZero();
   this->current_joint_torques_.setZero();
   this->command_joint_torques_.setZero();
+  
+  this->last_command_ = std::chrono::steady_clock::now();
 }
 
 void FrankaLightWeightInterface::run_controller() {
@@ -42,6 +44,9 @@ void FrankaLightWeightInterface::run_controller() {
         std::cerr << e.what() << std::endl;
       }
       std::cerr << "Controller stopped but the node is still active, restarting..." << std::endl;
+      //flush and reset any remaining command messages
+      proto::poll(this->zmq_subscriber_, this->zmq_command_msg_);
+      this->command_joint_torques_.setZero();
       std::this_thread::sleep_for(std::chrono::seconds(1));
     }
   } else {
@@ -55,6 +60,10 @@ void FrankaLightWeightInterface::poll_external_command() {
     for (std::size_t joint = 0; joint < 7; ++joint) {
       this->command_joint_torques_[joint] = this->zmq_command_msg_.jointTorque[joint];
     }
+    this->last_command_ = std::chrono::steady_clock::now();
+  } else if (std::chrono::duration_cast<std::chrono::milliseconds>(
+      std::chrono::steady_clock::now() - this->last_command_).count() > this->command_timeout_.count()) {
+    this->command_joint_torques_.setZero();
   }
 }
 
