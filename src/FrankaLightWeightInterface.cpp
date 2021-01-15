@@ -3,8 +3,15 @@
 #include <utility>
 
 namespace frankalwi {
-FrankaLightWeightInterface::FrankaLightWeightInterface(std::string robot_ip) :
-    robot_ip_(std::move(robot_ip)), connected_(false), shutdown_(false), zmq_context_(1) {}
+FrankaLightWeightInterface::FrankaLightWeightInterface(std::string robot_ip,
+                                                       std::string state_uri,
+                                                       std::string command_uri) :
+    robot_ip_(std::move(robot_ip)),
+    state_uri_(std::move(state_uri)),
+    command_uri_(std::move(command_uri)),
+    connected_(false),
+    shutdown_(false),
+    zmq_context_(1) {}
 
 void FrankaLightWeightInterface::init() {
   // create connection to the robot
@@ -15,12 +22,12 @@ void FrankaLightWeightInterface::init() {
   // create zmq connections with an external controller
   // TODO: find a better way to pass in port number
   this->zmq_publisher_ = zmq::socket_t(this->zmq_context_, ZMQ_PUB);
-  this->zmq_publisher_.bind("tcp://*:5563");
+  this->zmq_publisher_.connect("tcp://" + this->state_uri_);
 
   this->zmq_subscriber_ = zmq::socket_t(this->zmq_context_, ZMQ_SUB);
   this->zmq_subscriber_.set(zmq::sockopt::conflate, 1);
   this->zmq_subscriber_.set(zmq::sockopt::subscribe, "");
-  this->zmq_subscriber_.connect("tcp://localhost:5564");
+  this->zmq_subscriber_.connect("tcp://" + this->command_uri_);
 
   this->current_cartesian_twist_.setZero();
   this->current_cartesian_wrench_.setZero();
@@ -28,7 +35,7 @@ void FrankaLightWeightInterface::init() {
   this->current_joint_velocities_.setZero();
   this->current_joint_torques_.setZero();
   this->command_joint_torques_.setZero();
-  
+
   this->last_command_ = std::chrono::steady_clock::now();
 }
 
@@ -162,7 +169,7 @@ void FrankaLightWeightInterface::run_joint_torques_controller() {
       // get the mass matrix
       std::array<double, 49> mass_array = franka_model_->mass(robot_state);
       Eigen::Map<const Eigen::Matrix<double, 7, 7> > mass(mass_array.data());
-      
+
       std::array<double, 7> torques{};
       Eigen::VectorXd::Map(&torques[0], 7) = this->command_joint_torques_.array()
           - d_gains * current_joint_velocities_.array()

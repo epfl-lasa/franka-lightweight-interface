@@ -27,6 +27,8 @@ private:
   std::unique_ptr<franka::Model> franka_model_; ///< model object of the robot
   bool connected_;
   bool shutdown_;
+  std::string state_uri_; ///< URI of the socket to connect to for publishing state messages
+  std::string command_uri_; ///< URI of the socket to connect to for receiving command messages
   zmq::context_t zmq_context_;
   zmq::socket_t zmq_publisher_;
   zmq::socket_t zmq_subscriber_;
@@ -54,7 +56,7 @@ public:
    * @brief Constructor for the FrankaLightWeightInterface class
    * @param robot_ip ip adress of the robot to control
    */
-  explicit FrankaLightWeightInterface(std::string robot_ip);
+  explicit FrankaLightWeightInterface(std::string robot_ip, std::string state_uri, std::string command_uri);
 
   /**
    * @brief Getter of the connected boolean attribute
