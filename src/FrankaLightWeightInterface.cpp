@@ -83,9 +83,10 @@ void FrankaLightWeightInterface::publish_robot_state() {
 
     for (std::size_t dof = 0; dof < 6; ++dof) {
       this->zmq_state_msg_.jacobian[dof][joint] = this->current_jacobian_(dof, joint);
+      this->zmq_state_msg_.mass[dof][joint] = this->current_mass_(dof, joint);
     }
+    this->zmq_state_msg_.mass[6][joint] = this->current_mass_(6, joint);
   }
-  std::copy(this->current_mass_array_.begin(), this->current_mass_array_.end(), this->zmq_state_msg_.mass.begin());
 
   this->zmq_state_msg_.eePose.position.x = this->current_cartesian_position_.x();
   this->zmq_state_msg_.eePose.position.y = this->current_cartesian_position_.y();
@@ -129,8 +130,8 @@ void FrankaLightWeightInterface::read_robot_state(const franka::RobotState& robo
   std::array<double, 42> jacobian_array = this->franka_model_->zeroJacobian(franka::Frame::kEndEffector, robot_state);
   this->current_jacobian_ = Eigen::Map<const Eigen::Matrix<double, 6, 7> >(jacobian_array.data());
 
-  this->current_mass_array_ = this->franka_model_->mass(robot_state);
-  this->current_mass_ = Eigen::Map<const Eigen::Matrix<double, 7, 7> >(this->current_mass_array_.data());
+  std::array<double, 49> current_mass_array = this->franka_model_->mass(robot_state);
+  this->current_mass_ = Eigen::Map<const Eigen::Matrix<double, 7, 7> >(current_mass_array.data());
 
   // get the twist from jacobian and current joint velocities
   this->current_cartesian_twist_ = this->current_jacobian_ * this->current_joint_velocities_;
