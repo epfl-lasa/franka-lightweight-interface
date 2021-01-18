@@ -41,7 +41,7 @@ template<std::size_t DOF>
 using Jacobian = std::array<Joints<DOF>, 6>;
 
 template<std::size_t DOF>
-using Mass = std::array<float, DOF*DOF>;
+using Mass = std::array<Joints<DOF>, DOF>;
 
 
 // --- Message structures --- //
