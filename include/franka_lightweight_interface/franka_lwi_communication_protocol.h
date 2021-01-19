@@ -22,6 +22,7 @@ struct Vec3D {
   float z;
 };
 
+// Quaternion is stored with scalar term first, followed by real vector terms (w, x, y, z)
 struct Quaternion {
   Quaternion() : w(0), x(0), y(0), z(0) {}
   explicit Quaternion(std::array<double, 4> q) : w(q[0]), x(q[1]), y(q[2]), z(q[3]) {}
@@ -49,6 +50,10 @@ struct EETwist {
   Vec3D angular;
 };
 
+// Jacobian and mass matrix are serialised in column-major format
+// (index = row + column * nrows), and (row = index % nrows), (column = floor(index / nrows))
+// For a 6x7 matrix, the serial indices   0,      1,      2     ...  6,      7,      8 ...
+//   map to the row/column indices as:   [0][0], [1][0], [2][0] ... [0][1], [1][1], [2][1] ...
 template<std::size_t DOF>
 using Jacobian = std::array<double, 6 * DOF>;
 
