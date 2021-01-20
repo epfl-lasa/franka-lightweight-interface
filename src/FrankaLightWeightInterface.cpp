@@ -63,10 +63,7 @@ void FrankaLightWeightInterface::run_controller() {
 
 void FrankaLightWeightInterface::poll_external_command() {
   if (proto::poll(this->zmq_subscriber_, this->zmq_command_msg_)) {
-    //TODO: use eigen map to copy std::array command message onto eigen matrix
-    for (std::size_t joint = 0; joint < 7; ++joint) {
-      this->command_joint_torques_[joint] = this->zmq_command_msg_.jointTorque[joint];
-    }
+    this->command_joint_torques_ = Eigen::Map<Eigen::MatrixXd>(this->zmq_command_msg_.jointTorque.data.data(), 7, 1);
     this->last_command_ = std::chrono::steady_clock::now();
   } else if (std::chrono::duration_cast<std::chrono::milliseconds>(
       std::chrono::steady_clock::now() - this->last_command_).count() > this->command_timeout_.count()) {
@@ -75,40 +72,25 @@ void FrankaLightWeightInterface::poll_external_command() {
 }
 
 void FrankaLightWeightInterface::publish_robot_state() {
-  //TODO: use eigen map and / or custom mapping utils to simplify this
-  for (std::size_t joint = 0; joint < 7; ++joint) {
-    this->zmq_state_msg_.jointPosition[joint] = this->current_joint_positions_[joint];
-    this->zmq_state_msg_.jointVelocity[joint] = this->current_joint_velocities_[joint];
-    this->zmq_state_msg_.jointTorque[joint] = this->current_joint_torques_[joint];
+  Eigen::MatrixXd::Map(this->zmq_state_msg_.jointPosition.data.data(), 7, 1) = this->current_joint_positions_.array();
+  Eigen::MatrixXd::Map(this->zmq_state_msg_.jointVelocity.data.data(), 7, 1) = this->current_joint_velocities_.array();
+  Eigen::MatrixXd::Map(this->zmq_state_msg_.jointTorque.data.data(), 7, 1) = this->current_joint_torques_.array();
 
-    for (std::size_t dof = 0; dof < 6; ++dof) {
-      this->zmq_state_msg_.jacobian[dof][joint] = this->current_jacobian_(dof, joint);
-      this->zmq_state_msg_.mass[dof][joint] = this->current_mass_(dof, joint);
-    }
-    this->zmq_state_msg_.mass[6][joint] = this->current_mass_(6, joint);
-  }
+  Eigen::MatrixXd::Map(this->zmq_state_msg_.jacobian.data(), 6, 7) = this->current_jacobian_.array();
+  Eigen::MatrixXd::Map(this->zmq_state_msg_.mass.data(), 7, 7) = this->current_mass_.array();
 
-  this->zmq_state_msg_.eePose.position.x = this->current_cartesian_position_.x();
-  this->zmq_state_msg_.eePose.position.y = this->current_cartesian_position_.y();
-  this->zmq_state_msg_.eePose.position.z = this->current_cartesian_position_.z();
-  this->zmq_state_msg_.eePose.orientation.w = this->current_cartesian_orientation_.w();
-  this->zmq_state_msg_.eePose.orientation.x = this->current_cartesian_orientation_.x();
-  this->zmq_state_msg_.eePose.orientation.y = this->current_cartesian_orientation_.y();
-  this->zmq_state_msg_.eePose.orientation.z = this->current_cartesian_orientation_.z();
+  std::array<double, 7> eePose{};
+  Eigen::MatrixXd::Map(&eePose[0], 3, 1) = this->current_cartesian_position_.array();
+  eePose[3] = this->current_cartesian_orientation_.w();
+  Eigen::MatrixXd::Map(&eePose[4], 3, 1) = this->current_cartesian_orientation_.vec().array();
+  this->zmq_state_msg_.eePose = frankalwi::proto::EEPose(eePose);
 
-  this->zmq_state_msg_.eeTwist.linear.x = this->current_cartesian_twist_[0];
-  this->zmq_state_msg_.eeTwist.linear.y = this->current_cartesian_twist_[1];
-  this->zmq_state_msg_.eeTwist.linear.z = this->current_cartesian_twist_[2];
-  this->zmq_state_msg_.eeTwist.angular.x = this->current_cartesian_twist_[3];
-  this->zmq_state_msg_.eeTwist.angular.y = this->current_cartesian_twist_[4];
-  this->zmq_state_msg_.eeTwist.angular.z = this->current_cartesian_twist_[5];
+  std::array<double, 6> eeTwist{};
+  Eigen::MatrixXd::Map(&eeTwist[0], 6, 1) = this->current_cartesian_twist_.array();
+  this->zmq_state_msg_.eeTwist = frankalwi::proto::EETwist(eeTwist);
 
-  this->zmq_state_msg_.eeWrench.linear.x = this->current_cartesian_wrench_[0];
-  this->zmq_state_msg_.eeWrench.linear.y = this->current_cartesian_wrench_[1];
-  this->zmq_state_msg_.eeWrench.linear.z = this->current_cartesian_wrench_[2];
-  this->zmq_state_msg_.eeWrench.angular.x = this->current_cartesian_wrench_[3];
-  this->zmq_state_msg_.eeWrench.angular.y = this->current_cartesian_wrench_[4];
-  this->zmq_state_msg_.eeWrench.angular.z = this->current_cartesian_wrench_[5];
+  Eigen::MatrixXd::Map(&eeTwist[0], 6, 1) = this->current_cartesian_wrench_.array();
+  this->zmq_state_msg_.eeWrench = frankalwi::proto::EETwist(eeTwist);
 
   proto::send(this->zmq_publisher_, this->zmq_state_msg_);
 }
