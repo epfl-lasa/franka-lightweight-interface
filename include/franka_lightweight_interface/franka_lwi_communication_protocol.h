@@ -81,6 +81,14 @@ struct CommandMessage {
   Joints<DOF> jointTorque;
 };
 
+// --- Conversion helpers --- //
+inline std::array<datatype, 3> vec3DToArray(const Vec3D& vec3D) {
+  return std::array<datatype, 3>({vec3D.x, vec3D.y, vec3D.z});
+}
+
+inline std::array<datatype, 4> quaternionToArray(const Quaternion& quaternion) {
+  return std::array<datatype, 4>({quaternion.w, quaternion.x, quaternion.y, quaternion.z});
+}
 
 // --- Communication helpers --- //
 
