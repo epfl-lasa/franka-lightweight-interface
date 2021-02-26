@@ -1,6 +1,5 @@
 #pragma once
 
-#include <zmq.hpp>
 #include <array>
 
 namespace frankalwi::proto {
