@@ -90,30 +90,4 @@ inline std::array<datatype, 4> quaternionToArray(const Quaternion& quaternion) {
   return std::array<datatype, 4>({quaternion.w, quaternion.x, quaternion.y, quaternion.z});
 }
 
-// --- Communication helpers --- //
-
-template<typename T>
-bool send(zmq::socket_t& publisher, const T& obj) {
-  zmq::message_t message(sizeof(obj));
-  memcpy(message.data(), &obj, sizeof(obj));
-  auto res = publisher.send(message, zmq::send_flags::none);
-
-  return res.has_value();
-}
-
-template<typename T>
-bool receive(zmq::socket_t& subscriber, T& obj, const zmq::recv_flags flags = zmq::recv_flags::none) {
-  zmq::message_t message;
-  auto res = subscriber.recv(message, flags);
-  if (res) {
-    obj = *message.data<T>();
-  }
-  return res.has_value();
-}
-
-template<typename T>
-bool poll(zmq::socket_t& subscriber, T& obj) {
-  return receive(subscriber, obj, zmq::recv_flags::dontwait);
-}
-
 }
