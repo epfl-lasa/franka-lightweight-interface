@@ -52,7 +52,7 @@ void FrankaLightWeightInterface::run_controller() {
       }
       std::cerr << "Controller stopped but the node is still active, restarting..." << std::endl;
       //flush and reset any remaining command messages
-      proto::poll(this->zmq_subscriber_, this->zmq_command_msg_);
+      poll(this->zmq_command_msg_);
       this->command_joint_torques_.setZero();
       std::this_thread::sleep_for(std::chrono::seconds(1));
     }
@@ -62,7 +62,7 @@ void FrankaLightWeightInterface::run_controller() {
 }
 
 void FrankaLightWeightInterface::poll_external_command() {
-  if (proto::poll(this->zmq_subscriber_, this->zmq_command_msg_)) {
+  if (poll(this->zmq_command_msg_)) {
     this->command_joint_torques_ = Eigen::Map<Eigen::MatrixXd>(this->zmq_command_msg_.jointTorque.data.data(), 7, 1);
     this->last_command_ = std::chrono::steady_clock::now();
   } else if (std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -92,7 +92,7 @@ void FrankaLightWeightInterface::publish_robot_state() {
   Eigen::MatrixXd::Map(&eeTwist[0], 6, 1) = this->current_cartesian_wrench_.array();
   this->zmq_state_msg_.eeWrench = frankalwi::proto::EETwist(eeTwist);
 
-  proto::send(this->zmq_publisher_, this->zmq_state_msg_);
+  send(this->zmq_state_msg_);
 }
 
 void FrankaLightWeightInterface::read_robot_state(const franka::RobotState& robot_state) {
@@ -168,5 +168,22 @@ void FrankaLightWeightInterface::run_joint_torques_controller() {
   catch (const franka::Exception& e) {
     std::cerr << e.what() << std::endl;
   }
+}
+
+static bool FrankaLightWeightInterface::send(const proto::StateMessage<7>& state) {
+  zmq::message_t message(sizeof(state));
+  memcpy(message.data(), &state, sizeof(state));
+  auto res = this->zmq_publisher_.send(message, zmq::send_flags::none);
+
+  return res.has_value();
+}
+
+static bool FrankaLightWeightInterface::poll(proto::CommandMessage<7>& command) {
+  zmq::message_t message;
+  auto res = this->zmq_subscriber_.recv(message, zmq::recv_flags::dontwai);
+  if (res) {
+    command = *message.data<proto::CommandMessage<7>>();
+  }
+  return res.has_value();
 }
 }

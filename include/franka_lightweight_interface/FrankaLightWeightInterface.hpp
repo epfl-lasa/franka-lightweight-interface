@@ -50,6 +50,10 @@ private:
 
   void print_state() const;
 
+  static bool send(const proto::StateMessage<7>& state);
+
+  static bool poll(proto::CommandMessage<7>& command);
+
 public:
   /**
    * @brief Constructor for the FrankaLightWeightInterface class
