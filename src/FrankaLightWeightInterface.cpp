@@ -7,11 +7,12 @@ FrankaLightWeightInterface::FrankaLightWeightInterface(std::string robot_ip,
                                                        std::string state_uri,
                                                        std::string command_uri) :
     robot_ip_(std::move(robot_ip)),
-    state_uri_(std::move(state_uri)),
-    command_uri_(std::move(command_uri)),
     connected_(false),
     shutdown_(false),
-    zmq_context_(1) {}
+    state_uri_(std::move(state_uri)),
+    command_uri_(std::move(command_uri)),
+    zmq_context_(1) {
+}
 
 void FrankaLightWeightInterface::init() {
   // create connection to the robot
@@ -170,7 +171,7 @@ void FrankaLightWeightInterface::run_joint_torques_controller() {
   }
 }
 
-static bool FrankaLightWeightInterface::send(const proto::StateMessage<7>& state) {
+bool FrankaLightWeightInterface::send(const proto::StateMessage<7>& state) {
   zmq::message_t message(sizeof(state));
   memcpy(message.data(), &state, sizeof(state));
   auto res = this->zmq_publisher_.send(message, zmq::send_flags::none);
@@ -178,9 +179,9 @@ static bool FrankaLightWeightInterface::send(const proto::StateMessage<7>& state
   return res.has_value();
 }
 
-static bool FrankaLightWeightInterface::poll(proto::CommandMessage<7>& command) {
+bool FrankaLightWeightInterface::poll(proto::CommandMessage<7>& command) {
   zmq::message_t message;
-  auto res = this->zmq_subscriber_.recv(message, zmq::recv_flags::dontwai);
+  auto res = this->zmq_subscriber_.recv(message, zmq::recv_flags::dontwait);
   if (res) {
     command = *message.data<proto::CommandMessage<7>>();
   }

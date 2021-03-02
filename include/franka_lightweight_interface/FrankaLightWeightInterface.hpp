@@ -7,6 +7,8 @@
 #include <franka/robot.h>
 #include <Eigen/Core>
 #include <Eigen/Dense>
+#include <zmq.hpp>
+
 #include <iostream>
 #include <mutex>
 #include <thread>
@@ -50,9 +52,9 @@ private:
 
   void print_state() const;
 
-  static bool send(const proto::StateMessage<7>& state);
+  bool send(const proto::StateMessage<7>& state);
 
-  static bool poll(proto::CommandMessage<7>& command);
+  bool poll(proto::CommandMessage<7>& command);
 
 public:
   /**
