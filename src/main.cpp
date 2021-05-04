@@ -8,10 +8,8 @@ int main(int argc, char** argv) {
   std::string robot_ip = "172.16.0.2";
   std::string state_uri = "0.0.0.0:1601";
   std::string command_uri = "0.0.0.0:1602";
-  if (argc == 2) {
-    if (atof(argv[1]) == 16) {
-      break;
-    } else if (atof(argv[1]) == 17) {
+  if (argc == 2 && atof(argv[1]) != 16) {
+    if (atof(argv[1]) == 17) {
       robot_ip = "172.17.0.2";
       state_uri = "0.0.0.0:1701";
       command_uri = "0.0.0.0:1702";
