@@ -10,7 +10,7 @@ int main(int argc, char** argv) {
   std::string command_uri = "0.0.0.0:1602";
   if (argc == 2) {
     if (atof(argv[1]) == 16) {
-      continue;
+      break;
     } else if (atof(argv[1]) == 17) {
       robot_ip = "172.17.0.2";
       state_uri = "0.0.0.0:1701";
