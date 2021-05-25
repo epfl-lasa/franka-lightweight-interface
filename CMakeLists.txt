@@ -26,14 +26,19 @@ include_directories(
  	${Eigen3_INCLUDE_DIRS}
 )
 
-set(CORE_SOURCES
+set(CORE_ROBOT_SOURCES
     src/FrankaLightWeightInterface.cpp
-    src/main.cpp
+    src/main_robot.cpp
 )
-
-add_executable (${PROJECT_NAME} ${CORE_SOURCES})
-
+add_executable (${PROJECT_NAME} ${CORE_ROBOT_SOURCES})
 target_link_libraries(${PROJECT_NAME} franka Eigen3::Eigen cppzmq)
+
+set(CORE_GRIPPER_SOURCES
+		src/FrankaGripperInterface.cpp
+		src/main_gripper.cpp
+)
+add_executable (franka_gripper_interface ${CORE_GRIPPER_SOURCES})
+target_link_libraries(franka_gripper_interface franka cppzmq)
 
 install(DIRECTORY include/
   	DESTINATION include

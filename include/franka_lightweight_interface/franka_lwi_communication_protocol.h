@@ -80,6 +80,22 @@ struct CommandMessage {
   Joints<DOF> jointTorque;
 };
 
+struct GripperStateMessage {
+  double width;
+  double max_width;
+  bool is_grasped;
+};
+
+struct GripperCommandMessage {
+  bool home = false;
+  bool stop = false;
+  double width = 0;
+  double speed = 0;
+  double force = 0;
+  double epsilon_inner = 0.005;
+  double epsilon_outer = 0.005;
+};
+
 // --- Conversion helpers --- //
 inline std::array<datatype, 3> vec3DToArray(const Vec3D& vec3D) {
   return std::array<datatype, 3>({vec3D.x, vec3D.y, vec3D.z});
