@@ -29,7 +29,6 @@ private:
   proto::GripperCommandMessage zmq_command_msg_{};
   proto::GripperStateMessage zmq_state_msg_{};
   franka::GripperState current_state_;
-  std::mutex mutex_;
 
   void print_state() const;
 
