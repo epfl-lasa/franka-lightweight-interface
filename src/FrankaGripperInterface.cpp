@@ -47,7 +47,7 @@ void FrankaGripperInterface::run_controller() {
             success = this->gripper_->homing();
           } else if (this->zmq_command_msg_.force == 0) {
             success = this->gripper_->move(this->zmq_command_msg_.width, this->zmq_command_msg_.speed);
-          } else {
+          } else if (this->zmq_command_msg_.force > 0) {
             success = this->gripper_->grasp(this->zmq_command_msg_.width,
                                             this->zmq_command_msg_.speed,
                                             this->zmq_command_msg_.force,
