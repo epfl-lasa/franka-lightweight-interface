@@ -2,9 +2,21 @@
 
 #include <array>
 
+#define FRANKA_LWI_PROTO_VERSION (1.1)
+
 namespace frankalwi::proto {
 
 typedef double datatype;
+
+enum ControlType {
+  NONE = 0,
+  JOINT_POSITION,
+  JOINT_VELOCITY,
+  JOINT_TORQUE,
+  CARTESIAN_POSE,
+  CARTESIAN_TWIST,
+  CARTESIAN_WRENCH
+};
 
 // --- Message sub-structures --- //
 template<std::size_t DOF>
@@ -18,6 +30,7 @@ struct Joints {
 struct Vec3D {
   Vec3D() : x(0), y(0), z(0) {}
   explicit Vec3D(std::array<datatype, 3> vec) : x(vec[0]), y(vec[1]), z(vec[2]) {}
+  inline std::array<datatype, 3> data() { return std::array<datatype, 3>({x, y, z}); }
   datatype x;
   datatype y;
   datatype z;
@@ -27,6 +40,7 @@ struct Vec3D {
 struct Quaternion {
   Quaternion() : w(0), x(0), y(0), z(0) {}
   explicit Quaternion(std::array<datatype, 4> q) : w(q[0]), x(q[1]), y(q[2]), z(q[3]) {}
+  inline std::array<datatype, 4> data() { return std::array<datatype, 4>({w, x, y, z}); }
   datatype w;
   datatype x;
   datatype y;
@@ -36,8 +50,11 @@ struct Quaternion {
 struct EEPose {
   EEPose() : position(), orientation() {}
   explicit EEPose(std::array<datatype, 7> pose) : position({pose[0], pose[1], pose[2]}),
-                                                orientation({pose[3], pose[4], pose[5], pose[6]}) {
-
+                                                  orientation({pose[3], pose[4], pose[5], pose[6]}) {}
+  inline std::array<datatype, 7> data() {
+    return std::array<datatype, 7>({
+      position.x, position.y, position.z, orientation.w, orientation.x, orientation.y, orientation.z
+    });
   }
   Vec3D position;
   Quaternion orientation;
@@ -46,7 +63,12 @@ struct EEPose {
 struct EETwist {
   EETwist() : linear(), angular() {}
   explicit EETwist(std::array<datatype, 6> twist) : linear({twist[0], twist[1], twist[2]}),
-                                                  angular({twist[3], twist[4], twist[5]}) {}
+                                                    angular({twist[3], twist[4], twist[5]}) {}
+  inline std::array<datatype, 6> data() {
+    return std::array<datatype, 6>({
+      linear.x, linear.y, linear.z, angular.x, angular.y, angular.z
+    });
+  }
   Vec3D linear;
   Vec3D angular;
 };
@@ -77,14 +99,22 @@ struct StateMessage {
 
 template<std::size_t DOF>
 struct CommandMessage {
+  ControlType controlType = NONE;
+  Joints<DOF> jointPosition;
+  Joints<DOF> jointVelocity;
   Joints<DOF> jointTorque;
+  EEPose eePose;
+  EETwist eeTwist;
+  EETwist eeWrench;
 };
 
 // --- Conversion helpers --- //
+[[deprecated("Use Vec3D::data() instead")]]
 inline std::array<datatype, 3> vec3DToArray(const Vec3D& vec3D) {
   return std::array<datatype, 3>({vec3D.x, vec3D.y, vec3D.z});
 }
 
+[[deprecated("Use Quaternion::data() instead")]]
 inline std::array<datatype, 4> quaternionToArray(const Quaternion& quaternion) {
   return std::array<datatype, 4>({quaternion.w, quaternion.x, quaternion.y, quaternion.z});
 }

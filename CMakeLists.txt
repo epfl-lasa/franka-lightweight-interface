@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.9)
+project(franka_lightweight_interface VERSION 1.1)
 
 # Options. Turn on with 'cmake -Druntests=ON'.
 option(runtests "Build all tests." OFF) # Makes boolean 'test' available.
 
-project(franka_lightweight_interface)
 
 # Default to C99
 if(NOT CMAKE_C_STANDARD)

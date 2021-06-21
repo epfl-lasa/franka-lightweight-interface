@@ -36,6 +36,7 @@ private:
   zmq::socket_t zmq_subscriber_;
   proto::CommandMessage<7> zmq_command_msg_{};
   proto::StateMessage<7> zmq_state_msg_{};
+  proto::ControlType control_type_ = proto::NONE;
   Eigen::Vector3d current_cartesian_position_;
   Eigen::Quaterniond current_cartesian_orientation_;
   Eigen::Matrix<double, 6, 1> current_cartesian_twist_;
@@ -45,7 +46,13 @@ private:
   Eigen::Matrix<double, 7, 1> current_joint_torques_;
   Eigen::Matrix<double, 6, 7> current_jacobian_;
   Eigen::Matrix<double, 7, 7> current_mass_;
+  Eigen::Matrix<double, 7, 1> command_joint_positions_;
+  Eigen::Matrix<double, 7, 1> command_joint_velocities_;
   Eigen::Matrix<double, 7, 1> command_joint_torques_;
+  Eigen::Vector3d command_cartesian_position_;
+  Eigen::Quaterniond command_cartesian_orientation_;
+  Eigen::Matrix<double, 6, 1> command_cartesian_twist_;
+  Eigen::Matrix<double, 6, 1> command_cartesian_wrench_;
   std::chrono::steady_clock::time_point last_command_;
   std::chrono::milliseconds command_timeout_ = std::chrono::milliseconds(500);
   std::mutex mutex_;
@@ -108,10 +115,21 @@ public:
   void read_robot_state(const franka::RobotState& robot_state);
 
   /**
+   * @brief Read and publish the robot state while no control commands are received
+   */
+  void run_state_publisher();
+
+  /**
    * @brief Run the joint torques controller
    * that reads commands from the joint torques subscription
    */
   void run_joint_torques_controller();
+
+  /**
+   * @brief Run the Cartesian velocities controller
+   * that reads commands from the cartesian twist subscription
+   */
+  void run_cartesian_velocities_controller();
 
 };
 
