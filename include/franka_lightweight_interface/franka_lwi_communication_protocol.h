@@ -30,7 +30,7 @@ struct Joints {
 struct Vec3D {
   Vec3D() : x(0), y(0), z(0) {}
   explicit Vec3D(std::array<datatype, 3> vec) : x(vec[0]), y(vec[1]), z(vec[2]) {}
-  inline std::array<datatype, 3> data() { return std::array<datatype, 3>({x, y, z}); }
+  inline std::array<datatype, 3> data() const { return std::array<datatype, 3>({x, y, z}); }
   datatype x;
   datatype y;
   datatype z;
@@ -40,7 +40,7 @@ struct Vec3D {
 struct Quaternion {
   Quaternion() : w(0), x(0), y(0), z(0) {}
   explicit Quaternion(std::array<datatype, 4> q) : w(q[0]), x(q[1]), y(q[2]), z(q[3]) {}
-  inline std::array<datatype, 4> data() { return std::array<datatype, 4>({w, x, y, z}); }
+  inline std::array<datatype, 4> data() const { return std::array<datatype, 4>({w, x, y, z}); }
   datatype w;
   datatype x;
   datatype y;
@@ -51,7 +51,7 @@ struct EEPose {
   EEPose() : position(), orientation() {}
   explicit EEPose(std::array<datatype, 7> pose) : position({pose[0], pose[1], pose[2]}),
                                                   orientation({pose[3], pose[4], pose[5], pose[6]}) {}
-  inline std::array<datatype, 7> data() {
+  inline std::array<datatype, 7> data() const {
     return std::array<datatype, 7>({
       position.x, position.y, position.z, orientation.w, orientation.x, orientation.y, orientation.z
     });
@@ -64,7 +64,7 @@ struct EETwist {
   EETwist() : linear(), angular() {}
   explicit EETwist(std::array<datatype, 6> twist) : linear({twist[0], twist[1], twist[2]}),
                                                     angular({twist[3], twist[4], twist[5]}) {}
-  inline std::array<datatype, 6> data() {
+  inline std::array<datatype, 6> data() const {
     return std::array<datatype, 6>({
       linear.x, linear.y, linear.z, angular.x, angular.y, angular.z
     });
