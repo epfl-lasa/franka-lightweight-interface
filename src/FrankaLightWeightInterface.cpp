@@ -88,16 +88,16 @@ void FrankaLightWeightInterface::poll_external_command() {
     this->last_command_ = std::chrono::steady_clock::now();
     this->control_type_ = this->zmq_command_msg_.controlType;
 
-    this->command_joint_positions_ = Eigen::Map<Eigen::MatrixXd>(this->zmq_command_msg_.jointPosition.data.data(), 7, 1);
-    this->command_joint_velocities_ = Eigen::Map<Eigen::MatrixXd>(this->zmq_command_msg_.jointVelocity.data.data(), 7, 1);
-    this->command_joint_torques_ = Eigen::Map<Eigen::MatrixXd>(this->zmq_command_msg_.jointTorque.data.data(), 7, 1);
+    this->command_joint_positions_ = Eigen::Map<Eigen::MatrixXd>(this->zmq_command_msg_.jointPosition.array().data(), 7, 1);
+    this->command_joint_velocities_ = Eigen::Map<Eigen::MatrixXd>(this->zmq_command_msg_.jointVelocity.array().data(), 7, 1);
+    this->command_joint_torques_ = Eigen::Map<Eigen::MatrixXd>(this->zmq_command_msg_.jointTorque.array().data(), 7, 1);
 
-    this->command_cartesian_position_ = Eigen::Vector3d(this->zmq_command_msg_.eePose.position.data().data());
-    this->command_cartesian_orientation_ = Eigen::Quaterniond(this->zmq_command_msg_.eePose.orientation.data().data());
-    this->command_cartesian_twist_.block<3, 1>(0, 0) = Eigen::Vector3d(this->zmq_command_msg_.eeTwist.linear.data().data());
-    this->command_cartesian_twist_.block<3, 1>(3, 0) = Eigen::Vector3d(this->zmq_command_msg_.eeTwist.angular.data().data());
-    this->command_cartesian_wrench_.block<3, 1>(0, 0) = Eigen::Vector3d(this->zmq_command_msg_.eeWrench.linear.data().data());
-    this->command_cartesian_wrench_.block<3, 1>(3, 0) = Eigen::Vector3d(this->zmq_command_msg_.eeWrench.angular.data().data());
+    this->command_cartesian_position_ = Eigen::Vector3d(this->zmq_command_msg_.eePose.position.array().data());
+    this->command_cartesian_orientation_ = Eigen::Quaterniond(this->zmq_command_msg_.eePose.orientation.array_xyzw().data());
+    this->command_cartesian_twist_.block<3, 1>(0, 0) = Eigen::Vector3d(this->zmq_command_msg_.eeTwist.linear.array().data());
+    this->command_cartesian_twist_.block<3, 1>(3, 0) = Eigen::Vector3d(this->zmq_command_msg_.eeTwist.angular.array().data());
+    this->command_cartesian_wrench_.block<3, 1>(0, 0) = Eigen::Vector3d(this->zmq_command_msg_.eeWrench.linear.array().data());
+    this->command_cartesian_wrench_.block<3, 1>(3, 0) = Eigen::Vector3d(this->zmq_command_msg_.eeWrench.angular.array().data());
   } else if (std::chrono::duration_cast<std::chrono::milliseconds>(
       std::chrono::steady_clock::now() - this->last_command_).count() > this->command_timeout_.count()) {
     this->command_joint_velocities_.setZero();
