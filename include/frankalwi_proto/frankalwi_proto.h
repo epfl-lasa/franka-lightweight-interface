@@ -41,88 +41,64 @@ struct CommandMessage {
   state_representation::JointState joint_state;
 };
 
-// --- Encoded message structures --- //
-
-/**
- * @struct EncodedStateMessage
- * @brief A collection of binary string encoded state variables that can be sent over the network.
- * @see StateMessage
- */
-struct EncodedStateMessage {
-  std::string ee_state;
-  std::string joint_state;
-  std::string jacobian;
-  std::string mass;
-};
-
-/**
- * @struct EncodedCommandMessage
- * @brief A collection of binary string encoded command variables that can be sent over the network.
- * @see CommandMessage
- */
-struct EncodedCommandMessage {
-  std::string control_type;
-  std::string ee_state;
-  std::string joint_state;
-};
-
 // --- Encoding methods --- //
 
 /**
  * @brief Encode a state message into the serialized binary format.
  * @param state The StateMessage to encode
- * @return The equivalent EncodedStateMessage
+ * @return An ordered vector of encoded strings representing the state message fields
  */
-inline EncodedStateMessage encode_state(const StateMessage& state) {
-  EncodedStateMessage message;
-  message.ee_state = clproto::encode(state.ee_state);
-  message.joint_state = clproto::encode(state.joint_state);
-  message.jacobian = clproto::encode(state.jacobian);
-  message.mass = clproto::encode(state_representation::Parameter("mass", state.mass));
-  return message;
+inline std::vector<std::string> encode_state(const StateMessage& state) {
+  std::vector<std::string> encoded_state;
+  encoded_state.emplace_back(clproto::encode(state.ee_state));
+  encoded_state.emplace_back(clproto::encode(state.joint_state));
+  encoded_state.emplace_back(clproto::encode(state.jacobian));
+  encoded_state.emplace_back(clproto::encode(state_representation::Parameter("mass", state.mass)));
+  return encoded_state;
 }
 
 /**
  * @brief Encode a command message into the serialized binary format.
  * @param state The CommandMessage to encode
- * @return The equivalent EncodedCommandMessage
+ * @return An ordered vector of encoded strings representing the command message fields
  */
-inline EncodedCommandMessage encode_command(const CommandMessage& command) {
-  EncodedCommandMessage message;
-  message.control_type = clproto::encode(
-      state_representation::Parameter<double>("control_type", static_cast<double>(command.control_type)));
-  message.ee_state = clproto::encode(command.ee_state);
-  message.joint_state = clproto::encode(command.joint_state);
-  return message;
+inline std::vector<std::string> encode_command(const CommandMessage& command) {
+  std::vector<std::string> encoded_command;
+  encoded_command.emplace_back(clproto::encode(
+      state_representation::Parameter<double>("control_type", static_cast<double>(command.control_type))));
+  encoded_command.emplace_back(clproto::encode(command.ee_state));
+  encoded_command.emplace_back(clproto::encode(command.joint_state));
+  return encoded_command;
 }
 
 // --- Decoding methods --- //
 
 /**
- * @brief Decode a state message into the serialized binary format.
- * @param message The EncodedStateMessage to decode
+ * @brief Decode a state message from the serialized binary format.
+ * @param message An ordered vector of encoded strings representing the state message fields
  * @return The equivalent StateMessage
  */
-inline StateMessage decode_state(const EncodedStateMessage& message) {
+inline StateMessage decode_state(const std::vector<std::string>& message) {
   StateMessage state;
-  state.ee_state = clproto::decode<state_representation::CartesianState>(message.ee_state);
-  state.joint_state = clproto::decode<state_representation::JointState>(message.joint_state);
-  state.jacobian = clproto::decode<state_representation::Jacobian>(message.jacobian);
-  state.mass = clproto::decode<state_representation::Parameter<Eigen::MatrixXd>>(message.mass).get_value();
+  state.ee_state = clproto::decode<state_representation::CartesianState>(message.at(0));
+  state.joint_state = clproto::decode<state_representation::JointState>(message.at(1));
+  state.jacobian = clproto::decode<state_representation::Jacobian>(message.at(2));
+  state.mass = clproto::decode<state_representation::Parameter<Eigen::MatrixXd>>(message.at(3)).get_value();
   return state;
 }
 
 /**
- * @brief Decode a command message into the serialized binary format.
- * @param message The EncodedCommandMessage to decode
+ * @brief Decode a command message from the serialized binary format.
+ * @param message An ordered vector of encoded strings representing the state message fields
  * @return The equivalent CommandMessage
  */
-inline CommandMessage decode_command(const EncodedCommandMessage& message) {
+inline CommandMessage decode_command(const std::vector<std::string>& message) {
   CommandMessage command;
   command.control_type = static_cast<ControlType>(clproto::decode<state_representation::Parameter<double>>(
-      message.control_type).get_value());
-  command.ee_state = clproto::decode<state_representation::CartesianState>(message.ee_state);
-  command.joint_state = clproto::decode<state_representation::JointState>(message.joint_state);
+      message.at(0)
+  ).get_value());
+  command.ee_state = clproto::decode<state_representation::CartesianState>(message.at(1));
+  command.joint_state = clproto::decode<state_representation::JointState>(message.at(2));
   return command;
 }
 

@@ -37,8 +37,10 @@ set(CORE_SOURCES
 )
 
 add_executable(${PROJECT_NAME} ${CORE_SOURCES})
-
 target_link_libraries(${PROJECT_NAME} franka protobuf clproto state_representation cppzmq)
+
+add_executable(example_joint_position_controller examples/joint_position_controller.cpp)
+target_link_libraries(example_joint_position_controller protobuf clproto state_representation cppzmq)
 
 install(DIRECTORY include/frankalwi_proto/
   	DESTINATION include/frankalwi_proto
