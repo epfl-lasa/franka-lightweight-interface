@@ -19,12 +19,16 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 find_package(Franka 0.7.0 REQUIRED)
-find_package(Eigen3 REQUIRED)
 find_package(cppzmq REQUIRED)
+find_library(protobuf REQUIRED)
+find_library(clproto REQUIRED)
+find_library(state_representation REQUIRED)
+find_package(Eigen3 REQUIRED)
 
 include_directories(
  	include
  	${Eigen3_INCLUDE_DIRS}
+	/usr/local/include/eigen3/
 )
 
 set(CORE_SOURCES
@@ -32,12 +36,12 @@ set(CORE_SOURCES
     src/main.cpp
 )
 
-add_executable (${PROJECT_NAME} ${CORE_SOURCES})
+add_executable(${PROJECT_NAME} ${CORE_SOURCES})
 
-target_link_libraries(${PROJECT_NAME} franka Eigen3::Eigen cppzmq)
+target_link_libraries(${PROJECT_NAME} franka protobuf clproto state_representation cppzmq)
 
-install(DIRECTORY include/
-  	DESTINATION include
+install(DIRECTORY include/frankalwi_proto/
+  	DESTINATION include/frankalwi_proto
 )
 
 install(TARGETS ${PROJECT_NAME}
