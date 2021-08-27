@@ -1,24 +1,32 @@
-
 #pragma once
-
-#include <franka/duration.h>
-#include <franka/exception.h>
-#include <franka/model.h>
-#include <franka/robot.h>
-#include <Eigen/Core>
-#include <Eigen/Dense>
-#include <zmq.hpp>
 
 #include <iostream>
 #include <mutex>
 #include <thread>
 #include <chrono>
 
-#include "franka_lightweight_interface/franka_lwi_communication_protocol.h"
+#include <franka/duration.h>
+#include <franka/exception.h>
+#include <franka/model.h>
+#include <franka/robot.h>
+
+#include "frankalwi_proto/frankalwi_network.h"
 
 namespace frankalwi {
+
+struct CollisionBehaviour {
+  std::array<double, 7> ltta; ///lower_torque_thresholds_acceleration
+  std::array<double, 7> utta; ///upper_torque_thresholds_acceleration
+  std::array<double, 7> lttn; ///lower_torque_thresholds_nominal
+  std::array<double, 7> uttn; ///upper_torque_thresholds_nominal
+  std::array<double, 6> lfta; ///lower_force_thresholds_acceleration
+  std::array<double, 6> ufta; ///upper_force_thresholds_acceleration
+  std::array<double, 6> lftn; ///lower_force_thresholds_nominal
+  std::array<double, 6> uftn; ///upper_force_thresholds_nominal
+};
+
 /**
- * @class FrankaRobotInterface
+ * @class FrankaLightweightInterface
  * @brief Class to define an interface with the Franka panda robots
  *
  */
@@ -34,34 +42,14 @@ private:
   zmq::context_t zmq_context_;
   zmq::socket_t zmq_publisher_;
   zmq::socket_t zmq_subscriber_;
-  proto::CommandMessage<7> zmq_command_msg_{};
-  proto::StateMessage<7> zmq_state_msg_{};
-  proto::ControlType control_type_ = proto::NONE;
-  Eigen::Vector3d current_cartesian_position_;
-  Eigen::Quaterniond current_cartesian_orientation_;
-  Eigen::Matrix<double, 6, 1> current_cartesian_twist_;
-  Eigen::Matrix<double, 6, 1> current_cartesian_wrench_;
-  Eigen::Matrix<double, 7, 1> current_joint_positions_;
-  Eigen::Matrix<double, 7, 1> current_joint_velocities_;
-  Eigen::Matrix<double, 7, 1> current_joint_torques_;
-  Eigen::Matrix<double, 6, 7> current_jacobian_;
-  Eigen::Matrix<double, 7, 7> current_mass_;
-  Eigen::Matrix<double, 7, 1> command_joint_positions_;
-  Eigen::Matrix<double, 7, 1> command_joint_velocities_;
-  Eigen::Matrix<double, 7, 1> command_joint_torques_;
-  Eigen::Vector3d command_cartesian_position_;
-  Eigen::Quaterniond command_cartesian_orientation_;
-  Eigen::Matrix<double, 6, 1> command_cartesian_twist_;
-  Eigen::Matrix<double, 6, 1> command_cartesian_wrench_;
+  proto::StateMessage state_;
+  proto::CommandMessage command_;
+  CollisionBehaviour collision_behaviour_;
   std::chrono::steady_clock::time_point last_command_;
   std::chrono::milliseconds command_timeout_ = std::chrono::milliseconds(500);
   std::mutex mutex_;
 
   void print_state() const;
-
-  bool send(const proto::StateMessage<7>& state);
-
-  bool poll(proto::CommandMessage<7>& command);
 
 public:
   /**
@@ -89,9 +77,71 @@ public:
   std::mutex& get_mutex();
 
   /**
+   * @brief Set the collision behaviour.
+   *
+   * @details Set separate torque and force boundaries for acceleration/deceleration and constant velocity
+   * movement phases.
+   *
+   * Forces or torques between lower and upper threshold are shown as contacts in the RobotState.
+   * Forces or torques above the upper threshold are registered as collision and cause the robot to
+   * stop moving.
+   *
+   * The new values only take effect when a controller is started.
+   *
+   * @param[in] lower_torque_thresholds_acceleration Contact torque thresholds during
+   * acceleration/deceleration for each joint in \f$[Nm]\f$.
+   * @param[in] upper_torque_thresholds_acceleration Collision torque thresholds during
+   * acceleration/deceleration for each joint in \f$[Nm]\f$.
+   * @param[in] lower_torque_thresholds_nominal Contact torque thresholds for each joint
+   * in \f$[Nm]\f$.
+   * @param[in] upper_torque_thresholds_nominal Collision torque thresholds for each joint
+   * in \f$[Nm]\f$.
+   * @param[in] lower_force_thresholds_acceleration Contact force thresholds during
+   * acceleration/deceleration for \f$(x,y,z,R,P,Y)\f$ in \f$[N]\f$.
+   * @param[in] upper_force_thresholds_acceleration Collision force thresholds during
+   * acceleration/deceleration for \f$(x,y,z,R,P,Y)\f$ in \f$[N]\f$.
+   * @param[in] lower_force_thresholds_nominal Contact force thresholds for \f$(x,y,z,R,P,Y)\f$
+   * in \f$[N]\f$.
+   * @param[in] upper_force_thresholds_nominal Collision force thresholds for \f$(x,y,z,R,P,Y)\f$
+   * in \f$[N]\f$.
+   */
+  void set_collision_behaviour(
+      const std::array<double, 7>& lower_torque_thresholds_acceleration,
+      const std::array<double, 7>& upper_torque_thresholds_acceleration,
+      const std::array<double, 7>& lower_torque_thresholds_nominal,
+      const std::array<double, 7>& upper_torque_thresholds_nominal,
+      const std::array<double, 6>& lower_force_thresholds_acceleration,
+      const std::array<double, 6>& upper_force_thresholds_acceleration,
+      const std::array<double, 6>& lower_force_thresholds_nominal,
+      const std::array<double, 6>& upper_force_thresholds_nominal
+  );
+
+  /**
+   * @brief Set the collision behaviour.
+   * @copydetails FrankaLightWeightInterface::set_collision_behaviour(<!--
+   * -->const std::array<double, 7>&,const std::array<double, 7>&,<!--
+   * -->const std::array<double, 7>&,const std::array<double, 7>&,<!--
+   * -->const std::array<double, 6>&,const std::array<double, 6>&,<!--
+   * -->const std::array<double, 6>&,const std::array<double, 6>&)
+   * @param collision_behaviour The collision behaviour structure
+   * containing lower and upper torque and force thresholds.
+   * @see FrankaLightWeightInterface::set_collision_behaviour(<!--
+   * -->const std::array<double, 7>&,const std::array<double, 7>&,<!--
+   * -->const std::array<double, 7>&,const std::array<double, 7>&,<!--
+   * -->const std::array<double, 6>&,const std::array<double, 6>&,<!--
+   * -->const std::array<double, 6>&,const std::array<double, 6>&)
+   */
+  void set_collision_behaviour(const CollisionBehaviour& collision_behaviour);
+
+  /**
    * @brief Initialize the connection to the robot
    */
   void init();
+
+  /**
+   * @brief Reset the commanded state variable derivatives to zero (twists, accelerations and torques).
+   */
+  void reset_command();
 
   /**
    * @brief Threaded function that run a controller based on the value in the active_controller enumeration
@@ -148,21 +198,15 @@ inline std::mutex& FrankaLightWeightInterface::get_mutex() {
 inline void FrankaLightWeightInterface::print_state() const {
   std::cout << "Current robot cartesian state:" << std::endl;
   std::cout << "--------------------" << std::endl;
-  std::cout << this->current_cartesian_position_.transpose() << std::endl;
-  std::cout << this->current_cartesian_orientation_.w() << ", "
-            << this->current_cartesian_orientation_.vec().transpose() << std::endl;
-  std::cout << this->current_cartesian_twist_.transpose() << std::endl;
-  std::cout << this->current_cartesian_wrench_.transpose() << std::endl;
+  std::cout << this->state_.ee_state << std::endl;
   std::cout << "--------------------" << std::endl;
   std::cout << "Current robot joint state:" << std::endl;
   std::cout << "--------------------" << std::endl;
-  std::cout << this->current_joint_positions_.transpose() << std::endl;
-  std::cout << this->current_joint_velocities_.transpose() << std::endl;
-  std::cout << this->current_joint_torques_.transpose() << std::endl;
+  std::cout << this->state_.joint_state << std::endl;
   std::cout << "--------------------" << std::endl;
   std::cout << "Commanded torque:" << std::endl;
   std::cout << "--------------------" << std::endl;
-  std::cout << this->command_joint_torques_.transpose() << std::endl;
+  std::cout << this->command_.joint_state.get_torques().transpose() << std::endl;
   std::cout << "####################" << std::endl;
 }
 }
