@@ -47,8 +47,6 @@ install(DIRECTORY include/frankalwi_proto/
 )
 
 install(TARGETS ${PROJECT_NAME}
-  	ARCHIVE DESTINATION lib
-  	LIBRARY DESTINATION lib
   	RUNTIME DESTINATION bin
 )
 

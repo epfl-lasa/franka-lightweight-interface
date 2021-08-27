@@ -1,8 +1,12 @@
 # Franka Lightweight Interface
 
 This package is a lightweight interface to connect to the robot, receive its state and send torques commands to the
-internal controller. It is made to not use ROS and relies on a ZMQ based communication process. The internal controller
-is a simple control loop that reads the state of the robot & the torque command and send the latest to the robot.
+internal controller. It is made to be system agnostic (not relying on a ROS installation) and uses a
+ZMQ based communication process. The internal controller  is a simple control loop that broadcasts the robot state
+and forwards the commanded torque to the robot.
+
+The ZMQ messaging layer encodes state and command data using `state_representation` and `clproto` from
+[control libraries](https://github.com/epfl-lasa/control_libraries).
 
 ## Preprocess
 
@@ -31,6 +35,19 @@ cmake .. -DCPPZMQ_BUILD_TESTS=OFF
 sudo make -j4 install
 cd ../..
 rm -rf cppzmq*
+```
+
+You will also need to install `state_representation` and `clproto` from control libraries. The encoding
+library `clproto` also requires [Google Protobuf](https://github.com/protocolbuffers/protobuf/tree/master/src) to be installed.
+```bash
+# install control library state representation
+git clone -b develop --depth 1 https://github.com/epfl-lasa/control_libraries.git
+cd control_libraries/source
+sudo ./install.sh --no-controllers --no-dynamical-systems --no-robot-model --auto
+
+# install clproto protobuf bindings
+cd ../../control_libraries/protocol
+RUN sudo ./install.sh && sudo ldconfig
 ```
 
 Then, depending on your needs, continue [here](#libfranka-is-installed-somewhere-else-on-the-computer) if `libfranka`
