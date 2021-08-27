@@ -47,9 +47,9 @@ cd ../..
 rm -rf cppzmq*
 ```
 
-You will also need to install `state_representation` and `clproto` from control libraries. The encoding
-library `clproto` also requires [Google Protobuf](https://github.com/protocolbuffers/protobuf/tree/master/src) to be
-installed.
+You will also need to install `state_representation` and `clproto`
+from [control libraries](https://github.com/epfl-lasa/control_libraries). The encoding library `clproto` also
+requires [Google Protobuf](https://github.com/protocolbuffers/protobuf/tree/master/src) to be installed.
 
 ```bash
 # install control library state representation
@@ -177,3 +177,15 @@ cd build && ./franka_lightweight_interface <robot-id>
 In case the controller stops, due to violation of the velocities or efforts applied on the robot, you can push on the
 emergency stop button, which turns the LEDs to white and unlock it to bring it back to blue. The controller is
 automatically restarted to accept new commands.
+
+## Examples
+
+See [here](examples/README.md) for examples on how to use the interface to control the robot.
+
+## Authors / Maintainers
+
+For any questions or further explanations, please contact the authors.
+
+- Enrico Eberhard ([enrico.eberhard@epfl.ch](mailto:enrico.eberhard@epfl.ch))
+- Dominic Reber ([dominic.reber@epfl.ch](mailto:dominic.reber@epfl.ch))
+- Baptiste Busch ([baptiste.busch@epfl.ch](mailto:baptiste.busch@epfl.ch))
