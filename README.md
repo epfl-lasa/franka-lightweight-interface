@@ -16,6 +16,7 @@ The ZMQ messaging layer encodes state and command data using `state_representati
 - [Robot IPs](#robot-ips)
 - [Running the interface](#running-the-interface)
 - [Examples](#examples)
+- [Authors / Maintainers](#authors--maintainers)
 
 ## Preprocess
 
