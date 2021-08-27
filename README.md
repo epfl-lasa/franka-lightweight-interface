@@ -1,12 +1,21 @@
 # Franka Lightweight Interface
 
 This package is a lightweight interface to connect to the robot, receive its state and send torques commands to the
-internal controller. It is made to be system agnostic (not relying on a ROS installation) and uses a
-ZMQ based communication process. The internal controller  is a simple control loop that broadcasts the robot state
-and forwards the commanded torque to the robot.
+internal controller. It is made to be system agnostic (not relying on a ROS installation) and uses a ZMQ based
+communication process. The internal controller is a simple control loop that broadcasts the robot state and forwards the
+commanded torque to the robot.
 
 The ZMQ messaging layer encodes state and command data using `state_representation` and `clproto` from
 [control libraries](https://github.com/epfl-lasa/control_libraries).
+
+## Quick start
+
+- [Preprocess](#preprocess)
+- [Installation](#installation)
+- [Connecting to the robot](#connecting-to-the-robot)
+- [Robot IPs](#robot-ips)
+- [Running the interface](#running-the-interface)
+- [Examples](#examples)
 
 ## Preprocess
 
@@ -18,7 +27,8 @@ so be sure to select that have an associated RT patch available.
 
 ## Installation
 
-First, you need to install libZMQ with C++ bindings, which in turn depends on libsodium and libzmq3.
+After the preprocess steps, you need to install libZMQ with C++ bindings, which in turn depends on libsodium and
+libzmq3.
 
 ```bash
 sudo apt-get update && sudo apt-get install -y \
@@ -38,7 +48,9 @@ rm -rf cppzmq*
 ```
 
 You will also need to install `state_representation` and `clproto` from control libraries. The encoding
-library `clproto` also requires [Google Protobuf](https://github.com/protocolbuffers/protobuf/tree/master/src) to be installed.
+library `clproto` also requires [Google Protobuf](https://github.com/protocolbuffers/protobuf/tree/master/src) to be
+installed.
+
 ```bash
 # install control library state representation
 git clone -b develop --depth 1 https://github.com/epfl-lasa/control_libraries.git
@@ -74,7 +86,7 @@ cmake --build .
 go back to the `build` directory of `libfranka` again and run
 
 ```bash
-make -j && sudo make install && sudo ldconfig
+make -j && sudo make install -j && sudo ldconfig
 ```
 
 This will enable `franka_lightweight_interface` to find the headers of `libfranka`. Finally, clone this repository
@@ -84,7 +96,7 @@ without the submodule option:
 git clone https://github.com/epfl-lasa/franka_lightweight_interface.git
 ```
 
-of for ssh cloning:
+or for ssh cloning:
 
 ```bash
 git clone git@github.com:epfl-lasa/franka_lightweight_interface.git
@@ -122,7 +134,7 @@ sudo apt install build-essential cmake git libpoco-dev libeigen3-dev libtool
 Then build and install the library
 
 ```bash
-cd lib/libfranka && mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && make -j && sudo make install && sudo ldconfig
+cd lib/libfranka && mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && make -j && sudo make install -j && sudo ldconfig
 ```
 
 ### Build the interface
@@ -131,7 +143,7 @@ Finally build the interface with:
 
 ```bash
 cd franka_lightweight_interface
-mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && make -j
+mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && sudo make install -j && sudo ldconfig
 ```
 
 ## Connecting to the robot
@@ -148,7 +160,7 @@ You can then access the web interface that allows to unlock the joints of the ro
 
 ## Robot IPs
 
-There are currently two Franka panda robots:
+There are currently two Franka Panda robots:
 
 - Franka Papa, with IP `172.16.0.2` and ID `16`
 - Franka Quebec 17, with IP `172.17.0.2` and ID `17`
