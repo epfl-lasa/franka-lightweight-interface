@@ -16,7 +16,7 @@ endif()
 
 include(FindProtobuf)
 find_package(Eigen3 REQUIRED)
-find_package(Franka 0.7.0 REQUIRED)
+find_package(Franka 0.8.0 REQUIRED)
 find_package(cppzmq REQUIRED)
 find_library(clproto NAMES libclproto.so REQUIRED)
 find_library(protobuf NAMES libprotobuf.so REQUIRED)

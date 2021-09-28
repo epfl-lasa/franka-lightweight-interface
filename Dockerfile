@@ -1,4 +1,4 @@
-FROM ghcr.io/epfl-lasa/control-libraries/development-dependencies AS source-dependencies
+FROM ghcr.io/epfl-lasa/control-libraries/development-dependencies as source-dependencies
 
 RUN apt-get update && apt-get install -y \
   libsodium-dev \
@@ -13,7 +13,7 @@ RUN rm -rf cppzmq*
 RUN git clone --recursive https://github.com/frankaemika/libfranka
 RUN cd libfranka && git checkout 0.8.0 && git submodule update && mkdir build
 WORKDIR /source/libfranka/build
-RUN cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF .. && cmake --build . && make -j && make && sudo ldconfig
+RUN cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF .. && cmake --build . && make -j && make install -j && ldconfig
 
 WORKDIR /source
 RUN git clone -b develop --single-branch https://github.com/epfl-lasa/control-libraries.git
@@ -27,11 +27,13 @@ WORKDIR /home/remote
 COPY --chown=remote ./ ./franka_lightweight_interface
 
 
-FROM source-dependencies AS runtime
+FROM source-dependencies as runtime
 
+RUN cd franka_lightweight_interface && mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && make \
+  && make install && ldconfig
+WORKDIR /home/remote
+RUN rm -rf /home/remote/franka_lightweight_interface
 USER remote
-RUN cd franka_lightweight_interface && mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && make
-WORKDIR /home/remote/franka_lightweight_interface/build
 
 ENTRYPOINT /bin/bash
 
@@ -52,6 +54,6 @@ RUN ( \
     echo 'chmod -R 755 /home/remote/.ssh'; \
     echo 'chown -R remote:remote /home/remote/.ssh'; \
     echo '/usr/sbin/sshd -D -e -f /etc/ssh/sshd_config_development'; \
-  ) > /.ssh_entrypoint.sh && chmod 744 /.ssh_entrypoint.sh
+  ) > /.sshd_entrypoint.sh && chmod 744 /.sshd_entrypoint.sh
 
-ENTRYPOINT ["/.ssh_entrypoint.sh"]
+ENTRYPOINT ["/.sshd_entrypoint.sh"]
