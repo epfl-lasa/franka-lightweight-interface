@@ -15,8 +15,9 @@ static CollisionBehaviour default_collision_behaviour() {
 }
 
 FrankaLightWeightInterface::FrankaLightWeightInterface(
-    std::string robot_ip, std::string state_uri, std::string command_uri
+    std::string robot_ip, std::string state_uri, std::string command_uri, std::string prefix
 ) :
+    prefix_(std::move(prefix)),
     robot_ip_(std::move(robot_ip)),
     connected_(false),
     shutdown_(false),
@@ -34,30 +35,33 @@ void FrankaLightWeightInterface::init() {
 
   // create zmq connections with an external controller
   // TODO: find a better way to pass in port number
-  this->zmq_publisher_ = zmq::socket_t(this->zmq_context_, ZMQ_PUB);
-  this->zmq_publisher_.connect("tcp://" + this->state_uri_);
+  network_interfaces::zmq::configure_subscriber(this->zmq_context_, this->zmq_subscriber_, this->command_uri_, false);
+  network_interfaces::zmq::configure_publisher(this->zmq_context_, this->zmq_publisher_, this->state_uri_, false);
 
-  this->zmq_subscriber_ = zmq::socket_t(this->zmq_context_, ZMQ_SUB);
-  this->zmq_subscriber_.set(zmq::sockopt::conflate, 1);
-  this->zmq_subscriber_.set(zmq::sockopt::subscribe, "");
-  this->zmq_subscriber_.connect("tcp://" + this->command_uri_);
+  if (this->prefix_.empty()) {
+    this->prefix_ = "franka_";
+  }
+  std::string robot_name = this->prefix_.substr(0, this->prefix_.length() - 1);
+  std::vector<std::string> joint_names(7);
+  for (std::size_t j = 0; j < joint_names.size(); ++j) {
+    joint_names.at(j) = this->prefix_ + "joint" + std::to_string(j + 1);
+  }
+  this->state_.ee_state = state_representation::CartesianState(this->prefix_ + "ee", this->prefix_ + "base");
+  this->state_.joint_state = state_representation::JointState(robot_name, joint_names);
+  this->state_.jacobian =
+      state_representation::Jacobian(robot_name, joint_names, this->prefix_ + "ee", this->prefix_ + "base");
+  this->state_.mass =
+      state_representation::Parameter<Eigen::MatrixXd>(this->prefix_ + "mass", Eigen::MatrixXd::Zero(7, 7));
 
-  this->state_.ee_state = state_representation::CartesianState("franka_ee", "franka_base");
-  this->state_.joint_state = state_representation::JointState("franka", 7);
-  this->state_.jacobian = state_representation::Jacobian("franka", 7, "franka_ee", "franka_base");
-  this->state_.mass = Eigen::MatrixXd::Zero(7, 7);
-
-  this->command_.control_type = proto::ControlType::NONE;
-  this->command_.ee_state = state_representation::CartesianState("franka_ee", "franka_base");
+  this->control_type_ = network_interfaces::control_type_t::UNDEFINED;
+  this->command_.control_type = std::vector<int>{static_cast<int>(this->control_type_)};
   this->command_.joint_state = state_representation::JointState("franka", 7);
 
   this->last_command_ = std::chrono::steady_clock::now();
 }
 
 void FrankaLightWeightInterface::reset_command() {
-  this->command_.ee_state.set_twist(Eigen::VectorXd::Zero(6));
-  this->command_.ee_state.set_accelerations(Eigen::VectorXd::Zero(6));
-  this->command_.ee_state.set_wrench(Eigen::VectorXd::Zero(6));
+  this->command_.control_type = std::vector<int>(7, static_cast<int>(network_interfaces::control_type_t::UNDEFINED));
   this->command_.joint_state.set_velocities(Eigen::VectorXd::Zero(7));
   this->command_.joint_state.set_accelerations(Eigen::VectorXd::Zero(7));
   this->command_.joint_state.set_torques(Eigen::VectorXd::Zero(7));
@@ -78,7 +82,8 @@ void FrankaLightWeightInterface::set_collision_behaviour(
           lower_torque_thresholds_acceleration, upper_torque_thresholds_acceleration, lower_torque_thresholds_nominal,
           upper_torque_thresholds_nominal, lower_force_thresholds_acceleration, upper_force_thresholds_acceleration,
           lower_force_thresholds_nominal, upper_force_thresholds_nominal
-      });
+      }
+  );
 }
 
 void FrankaLightWeightInterface::set_collision_behaviour(const CollisionBehaviour& collision_behaviour) {
@@ -90,20 +95,16 @@ void FrankaLightWeightInterface::run_controller() {
     // restart the controller unless the node is shutdown
     while (!this->is_shutdown()) {
       try {
-        switch (this->command_.control_type) {
-          case proto::ControlType::JOINT_TORQUE:
+        switch (this->control_type_) {
+          case network_interfaces::control_type_t::EFFORT:
             std::cout << "Starting joint torque controller..." << std::endl;
             this->run_joint_torques_controller();
             break;
-          case proto::ControlType::CARTESIAN_TWIST:
-            std::cout << "Starting cartesian velocities controller..." << std::endl;
-            this->run_cartesian_velocities_controller();
-            break;
           default:
-            std::cout << "Unimplemented control type! (" << this->command_.control_type << ")" << std::endl;
-            this->command_.control_type = proto::ControlType::NONE;
+            std::cout << "Unimplemented control type! (" << this->control_type_ << ")" << std::endl;
+            this->control_type_ = network_interfaces::control_type_t::UNDEFINED;
             [[fallthrough]];
-          case proto::ControlType::NONE:
+          case network_interfaces::control_type_t::UNDEFINED:
             std::cout << "Starting state publisher..." << std::endl;
             this->run_state_publisher();
             break;
@@ -113,7 +114,7 @@ void FrankaLightWeightInterface::run_controller() {
       }
       std::cerr << "Controller stopped but the node is still active, restarting..." << std::endl;
       //flush and reset any remaining command messages
-      network::poll(this->command_, this->zmq_subscriber_);
+      network_interfaces::zmq::receive(this->command_, this->zmq_subscriber_);
       this->reset_command();
       std::this_thread::sleep_for(std::chrono::seconds(1));
     }
@@ -123,16 +124,30 @@ void FrankaLightWeightInterface::run_controller() {
 }
 
 void FrankaLightWeightInterface::poll_external_command() {
-  if (network::poll(this->command_, this->zmq_subscriber_)) {
+  if (network_interfaces::zmq::receive(this->command_, this->zmq_subscriber_)) {
+    if (this->command_.joint_state.is_empty()) {
+      throw std::runtime_error("Received joint command is empty.");
+    }
     this->last_command_ = std::chrono::steady_clock::now();
+    const auto& control_type = this->command_.control_type.at(0);
+    for (auto type_iter = std::next(this->command_.control_type.begin());
+         type_iter != this->command_.control_type.end(); ++type_iter) {
+      if (*type_iter != control_type) {
+        throw std::runtime_error(
+            "Currently, only commands where all the joints have the same control type are supported."
+        );
+      }
+    }
+    this->control_type_ = network_interfaces::control_type_t(control_type_);
   } else if (std::chrono::duration_cast<std::chrono::milliseconds>(
-      std::chrono::steady_clock::now() - this->last_command_).count() > this->command_timeout_.count()) {
+      std::chrono::steady_clock::now() - this->last_command_
+  ).count() > this->command_timeout_.count()) {
     this->reset_command();
   }
 }
 
 void FrankaLightWeightInterface::publish_robot_state() {
-  network::send(this->state_, this->zmq_publisher_);
+  network_interfaces::zmq::send(this->state_, this->zmq_publisher_);
 }
 
 void FrankaLightWeightInterface::read_robot_state(const franka::RobotState& robot_state) {
@@ -152,7 +167,7 @@ void FrankaLightWeightInterface::read_robot_state(const franka::RobotState& robo
   this->state_.jacobian.set_data(Eigen::Map<const Eigen::Matrix<double, 6, 7>>(jacobian_array.data()));
 
   std::array<double, 49> current_mass_array = this->franka_model_->mass(robot_state);
-  this->state_.mass = Eigen::Map<const Eigen::Matrix<double, 7, 7> >(current_mass_array.data());
+  this->state_.mass.set_value(Eigen::Map<const Eigen::Matrix<double, 7, 7> >(current_mass_array.data()));
 
   // get the twist from jacobian and current joint velocities
   this->state_.ee_state.set_twist(this->state_.jacobian * this->state_.joint_state.get_velocities());
@@ -164,14 +179,15 @@ void FrankaLightWeightInterface::run_state_publisher() {
         [this](const franka::RobotState& robot_state) {
           // check the local socket for a command
           this->poll_external_command();
-          if (this->command_.control_type != proto::ControlType::NONE) {
+          if (this->control_type_ != network_interfaces::control_type_t::UNDEFINED) {
             std::cout << "Received a new control type command - switching! " << std::endl;
             return false;
           }
           this->read_robot_state(robot_state);
           this->publish_robot_state();
           return true;
-        });
+        }
+    );
   } catch (const franka::Exception& e) {
     std::cerr << e.what() << std::endl;
   }
@@ -184,7 +200,8 @@ void FrankaLightWeightInterface::run_joint_torques_controller() {
   this->franka_robot_->setCollisionBehavior(
       this->collision_behaviour_.ltta, this->collision_behaviour_.utta, this->collision_behaviour_.lttn,
       this->collision_behaviour_.uttn, this->collision_behaviour_.lfta, this->collision_behaviour_.ufta,
-      this->collision_behaviour_.lftn, this->collision_behaviour_.uftn);
+      this->collision_behaviour_.lftn, this->collision_behaviour_.uftn
+  );
 
   // Set joint damping.
   Eigen::ArrayXd d_gains = Eigen::ArrayXd(7);
@@ -198,7 +215,7 @@ void FrankaLightWeightInterface::run_joint_torques_controller() {
           // check the local socket for a torque command
           this->poll_external_command();
 
-          if (this->command_.control_type != proto::ControlType::JOINT_TORQUE) {
+          if (this->control_type_ != network_interfaces::control_type_t::EFFORT) {
             throw IncompatibleControlTypeException("Control type changed!");
           }
 
@@ -224,50 +241,10 @@ void FrankaLightWeightInterface::run_joint_torques_controller() {
 
           //return torques;
           return torques;
-        });
+        }
+    );
   } catch (const franka::Exception& e) {
     std::cerr << e.what() << std::endl;
   }
 }
-
-void FrankaLightWeightInterface::run_cartesian_velocities_controller() {
-  // Set additional parameters always before the control loop, NEVER in the control loop!
-
-  // Set collision behavior.
-  this->franka_robot_->setCollisionBehavior(
-      this->collision_behaviour_.ltta, this->collision_behaviour_.utta, this->collision_behaviour_.lttn,
-      this->collision_behaviour_.uttn, this->collision_behaviour_.lfta, this->collision_behaviour_.ufta,
-      this->collision_behaviour_.lftn, this->collision_behaviour_.uftn);
-
-  // Set carteisan impedance
-  this->franka_robot_->setCartesianImpedance({{100, 100, 100, 10, 10, 10}});
-
-  try {
-    this->franka_robot_->control(
-        [this](
-            const franka::RobotState& robot_state, franka::Duration
-        ) -> franka::CartesianVelocities {
-          // check the local socket for a velocity command
-          this->poll_external_command();
-
-          if (this->command_.control_type != proto::ControlType::CARTESIAN_TWIST) {
-            throw IncompatibleControlTypeException("Control type changed!");
-          }
-
-          // lock mutex
-          std::lock_guard<std::mutex> lock(this->get_mutex());
-          // extract current state
-          this->read_robot_state(robot_state);
-
-          std::array<double, 6> velocities{};
-          Eigen::VectorXd::Map(&velocities[0], 6) = this->command_.ee_state.get_twist();
-
-          // write the state out to the local socket
-          this->publish_robot_state();
-          return velocities;
-        }, franka::ControllerMode::kCartesianImpedance, true, 10.0);
-  } catch (const franka::Exception& e) {
-    std::cerr << e.what() << std::endl;
-  }
-}
-}
+}// namespace frankalwi

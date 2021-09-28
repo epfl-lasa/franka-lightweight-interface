@@ -1,8 +1,5 @@
 cmake_minimum_required(VERSION 3.9)
-project(franka_lightweight_interface VERSION 2.0)
-
-# Options. Turn on with 'cmake -DFRANKALWI_PROTO_ONLY=ON'.
-option(FRANKALWI_PROTO_ONLY "Only install frankalwi_proto headers." OFF) # Makes boolean 'FRANKALWI_PROTO_ONLY' available.
+project(franka_lightweight_interface VERSION 3.0)
 
 # Default to C99
 if(NOT CMAKE_C_STANDARD)
@@ -17,37 +14,32 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   	add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-find_package(cppzmq REQUIRED)
-find_library(protobuf REQUIRED)
-find_library(clproto REQUIRED)
-find_library(state_representation REQUIRED)
+include(FindProtobuf)
 find_package(Eigen3 REQUIRED)
+find_package(Franka 0.8.0 REQUIRED)
+find_package(cppzmq REQUIRED)
+find_library(clproto NAMES libclproto.so REQUIRED)
+find_library(protobuf NAMES libprotobuf.so REQUIRED)
+find_library(state_representation 4.0.0 NAMES libstate_representation.so REQUIRED)
 
 include_directories(
 		include
 		${Eigen3_INCLUDE_DIRS}
 		/usr/local/include/eigen3/
+		lib/network-interfaces/cpp/include
 )
 
-if(NOT FRANKALWI_PROTO_ONLY)
-	find_package(Franka 0.7.0 REQUIRED)
+set(CORE_SOURCES
+	src/FrankaLightWeightInterface.cpp
+	src/main.cpp
+)
 
-	set(CORE_SOURCES
-		src/FrankaLightWeightInterface.cpp
-		src/main.cpp
-	)
+add_executable(${PROJECT_NAME} ${CORE_SOURCES})
+target_link_libraries(${PROJECT_NAME} franka clproto cppzmq ${PROTOBUF_LIBRARY} state_representation)
 
-	add_executable(${PROJECT_NAME} ${CORE_SOURCES})
-	target_link_libraries(${PROJECT_NAME} franka protobuf clproto state_representation cppzmq)
-
-	install(TARGETS ${PROJECT_NAME}
-			RUNTIME DESTINATION bin
-			)
-endif()
+install(TARGETS ${PROJECT_NAME}
+		RUNTIME DESTINATION bin
+)
 
 add_executable(example_joint_position_controller examples/joint_position_controller.cpp)
-target_link_libraries(example_joint_position_controller protobuf clproto state_representation cppzmq)
-
-install(DIRECTORY include/frankalwi_proto/
-		DESTINATION include/frankalwi_proto
-		)
+target_link_libraries(example_joint_position_controller clproto cppzmq ${PROTOBUF_LIBRARY} state_representation)

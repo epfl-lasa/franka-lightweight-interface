@@ -1,3 +1,6 @@
 [submodule "lib/libfranka"]
 	path = lib/libfranka
 	url = https://github.com/frankaemika/libfranka
+[submodule "lib/network-interfaces"]
+	path = lib/network-interfaces
+	url = https://github.com/aica-technology/network-interfaces
