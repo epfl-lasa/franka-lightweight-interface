@@ -1,0 +1,8 @@
+*build*
+lib/libfranka
+*.sh
+.gitignore
+.gitmodules
+Dockerfile
+LICENSE
+README.md
