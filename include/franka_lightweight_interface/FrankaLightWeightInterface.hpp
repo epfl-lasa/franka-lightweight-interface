@@ -4,13 +4,14 @@
 #include <mutex>
 #include <thread>
 #include <chrono>
+#include <zmq.h>
 
 #include <franka/duration.h>
 #include <franka/exception.h>
 #include <franka/model.h>
 #include <franka/robot.h>
 
-#include "frankalwi_proto/frankalwi_network.h"
+#include "network_interfaces/zmq/network.h"
 
 namespace frankalwi {
 
@@ -32,6 +33,7 @@ struct CollisionBehaviour {
  */
 class FrankaLightWeightInterface {
 private:
+  std::string prefix_; ///< prefix of the robot joints
   std::string robot_ip_; ///< ip of the robot to connect to
   std::unique_ptr<franka::Robot> franka_robot_; ///< robot object to send command to
   std::unique_ptr<franka::Model> franka_model_; ///< model object of the robot
@@ -39,11 +41,12 @@ private:
   bool shutdown_;
   std::string state_uri_; ///< URI of the socket to connect to for publishing state messages
   std::string command_uri_; ///< URI of the socket to connect to for receiving command messages
-  zmq::context_t zmq_context_;
-  zmq::socket_t zmq_publisher_;
-  zmq::socket_t zmq_subscriber_;
-  proto::StateMessage state_;
-  proto::CommandMessage command_;
+  ::zmq::context_t zmq_context_;
+  ::zmq::socket_t zmq_publisher_;
+  ::zmq::socket_t zmq_subscriber_;
+  network_interfaces::zmq::StateMessage state_;
+  network_interfaces::zmq::CommandMessage command_;
+  network_interfaces::control_type_t control_type_;
   CollisionBehaviour collision_behaviour_;
   std::chrono::steady_clock::time_point last_command_;
   std::chrono::milliseconds command_timeout_ = std::chrono::milliseconds(500);
@@ -54,9 +57,11 @@ private:
 public:
   /**
    * @brief Constructor for the FrankaLightWeightInterface class
-   * @param robot_ip ip adress of the robot to control
+   * @param robot_ip ip address of the robot to control
    */
-  explicit FrankaLightWeightInterface(std::string robot_ip, std::string state_uri, std::string command_uri);
+  explicit FrankaLightWeightInterface(
+      std::string robot_ip, std::string state_uri, std::string command_uri, std::string prefix
+  );
 
   /**
    * @brief Getter of the connected boolean attribute
@@ -174,12 +179,6 @@ public:
    * that reads commands from the joint torques subscription
    */
   void run_joint_torques_controller();
-
-  /**
-   * @brief Run the Cartesian velocities controller
-   * that reads commands from the cartesian twist subscription
-   */
-  void run_cartesian_velocities_controller();
 
 };
 
