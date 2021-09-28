@@ -69,50 +69,9 @@ cd ../../control_libraries/protocol
 RUN sudo ./install.sh && sudo ldconfig
 ```
 
-Then, depending on your needs, continue [here](#libfranka-is-installed-somewhere-else-on-the-computer) if `libfranka`
-has already been installed somewhere else on the computer, or [here](#install-libfranka-as-submodule) if you want to
-install `libfranka` alongside the `franka_lightweight_interface`.
-
-### `libfranka` is installed somewhere else on the computer
-
-If `libfranka` has already been installed on the computer, following the steps of
-the [documentation](https://frankaemika.github.io/docs/installation_linux.html)
-
-```bash
-sudo apt install build-essential cmake git libpoco-dev libeigen3-dev
-git clone --recursive https://github.com/frankaemika/libfranka
-cd libfranka
-git checkout <version>
-git submodule update
-mkdir build
-cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
-cmake --build .
-```
-
-go back to the `build` directory of `libfranka` again and run
-
-```bash
-make -j && sudo make install -j && sudo ldconfig
-```
-
-This will enable `franka_lightweight_interface` to find the headers of `libfranka`. Finally, clone this repository
-without the submodule option:
-
-```bash
-git clone https://github.com/epfl-lasa/franka_lightweight_interface.git
-```
-
-or for ssh cloning:
-
-```bash
-git clone git@github.com:epfl-lasa/franka_lightweight_interface.git
-```
-
-### Install `libfranka` as submodule
-
-To install this library, first clone the repository with the recursive option to
-download [libfranka](https://frankaemika.github.io/docs/libfranka.html), added as a submodule:
+To install this project, first clone the repository with the recursive option to
+download [libfranka](https://frankaemika.github.io/docs/libfranka.html) and 
+[network-interfaces](https://github.com/aica-technology/network-interfaces), added as a submodules:
 
 ```bash
 git clone --recurse-submodules https://github.com/epfl-lasa/franka_lightweight_interface.git
@@ -130,6 +89,8 @@ In case you already cloned the repository you can use:
 git submodule init && git submodule update
 ```
 
+### Install `libfranka`
+
 The building process relies on cmake. You first need to build and
 install [libfranka](https://frankaemika.github.io/docs/libfranka.html) following the recommendation from the website.
 First download the required packages:
@@ -146,12 +107,14 @@ cd lib/libfranka && mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release 
 
 ### Build the interface
 
-Finally build the interface with:
+Finally, build the interface with:
 
 ```bash
 cd franka_lightweight_interface
-mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && sudo make install -j && sudo ldconfig
+mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && make -j && sudo ldconfig
 ```
+
+Optionally, one can run `sudo make install` before `sudo ldconfig` to install the interface to `/usr/local/bin`.
 
 ## Connecting to the robot
 
@@ -175,10 +138,11 @@ There are currently two Franka Panda robots:
 ## Running the interface
 
 To start the interface, first unlock the robot joints using the web interface. The LEDs on the robot change to blue.
-Then simply run the interface with your desired robot ID (either `16` or `17`):
+Then simply run the interface with your desired robot ID (either `16` or `17`) and optionally a prefix that allows to
+set the robot name and joint names:
 
 ```bash
-cd build && ./franka_lightweight_interface <robot-id>
+cd build && ./franka_lightweight_interface <robot-id> <robot-prefix>
 ```
 
 In case the controller stops, due to violation of the velocities or efforts applied on the robot, you can push on the
