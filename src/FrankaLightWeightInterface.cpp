@@ -38,12 +38,10 @@ void FrankaLightWeightInterface::init() {
   network_interfaces::zmq::configure_subscriber(this->zmq_context_, this->zmq_subscriber_, this->command_uri_, false);
   network_interfaces::zmq::configure_publisher(this->zmq_context_, this->zmq_publisher_, this->state_uri_, false);
 
-  std::string robot_name;
   if (this->prefix_.empty()) {
-    robot_name = "franka";
-  } else {
-    robot_name = this->prefix_.substr(0, this->prefix_.length() - 1);
+    this->prefix_ = "franka_";
   }
+  std::string robot_name = this->prefix_.substr(0, this->prefix_.length() - 1);
   std::vector<std::string> joint_names(7);
   for (std::size_t j = 0; j < joint_names.size(); ++j) {
     joint_names.at(j) = this->prefix_ + "joint" + std::to_string(j + 1);
