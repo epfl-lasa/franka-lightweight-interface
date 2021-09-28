@@ -13,8 +13,7 @@ RUN rm -rf cppzmq*
 RUN git clone --recursive https://github.com/frankaemika/libfranka
 RUN cd libfranka && git checkout 0.8.0 && git submodule update && mkdir build
 WORKDIR /source/libfranka/build
-RUN cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF .. && cmake --build . && make -j && make install && sudo ldconfig
-RUN cd /usr/local/lib && /bin/bash -c "ls"
+RUN cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF .. && cmake --build . && make -j && make && sudo ldconfig
 
 WORKDIR /source
 RUN git clone -b develop --single-branch https://github.com/epfl-lasa/control-libraries.git

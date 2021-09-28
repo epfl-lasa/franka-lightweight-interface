@@ -37,5 +37,9 @@ set(CORE_SOURCES
 add_executable(${PROJECT_NAME} ${CORE_SOURCES})
 target_link_libraries(${PROJECT_NAME} franka clproto cppzmq ${PROTOBUF_LIBRARY} state_representation)
 
+install(TARGETS ${PROJECT_NAME}
+		RUNTIME DESTINATION bin
+)
+
 add_executable(example_joint_position_controller examples/joint_position_controller.cpp)
 target_link_libraries(example_joint_position_controller clproto cppzmq ${PROTOBUF_LIBRARY} state_representation)
