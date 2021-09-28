@@ -129,16 +129,19 @@ void FrankaLightWeightInterface::poll_external_command() {
       throw std::runtime_error("Received joint command is empty.");
     }
     this->last_command_ = std::chrono::steady_clock::now();
-    for (std::size_t i = 1; i < this->command_.control_type.size(); ++i) {
-      if (this->command_.control_type.at(i) != this->command_.control_type.at(0)) {
+    const auto& control_type = this->command_.control_type.at(0);
+    for (auto type_iter = std::next(this->command_.control_type.begin());
+         type_iter != this->command_.control_type.end(); ++type_iter) {
+      if (*type_iter != control_type) {
         throw std::runtime_error(
             "Currently, only commands where all the joints have the same control type are supported."
         );
       }
     }
-    this->control_type_ = network_interfaces::control_type_t(this->command_.control_type.at(0));
+    this->control_type_ = network_interfaces::control_type_t(control_type_);
   } else if (std::chrono::duration_cast<std::chrono::milliseconds>(
-      std::chrono::steady_clock::now() - this->last_command_).count() > this->command_timeout_.count()) {
+      std::chrono::steady_clock::now() - this->last_command_
+  ).count() > this->command_timeout_.count()) {
     this->reset_command();
   }
 }
