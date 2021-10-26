@@ -119,7 +119,7 @@ void FrankaLightWeightInterface::run_controller() {
       std::this_thread::sleep_for(std::chrono::seconds(1));
     }
   } else {
-    std::cerr << "Robot not connected first call the init function" << std::endl;
+    throw std::runtime_error("Robot not connected! Call the init function first.");
   }
 }
 
@@ -138,7 +138,7 @@ void FrankaLightWeightInterface::poll_external_command() {
         );
       }
     }
-    this->control_type_ = network_interfaces::control_type_t(control_type_);
+    this->control_type_ = network_interfaces::control_type_t(control_type);
   } else if (std::chrono::duration_cast<std::chrono::milliseconds>(
       std::chrono::steady_clock::now() - this->last_command_
   ).count() > this->command_timeout_.count()) {
@@ -216,6 +216,9 @@ void FrankaLightWeightInterface::run_joint_torques_controller() {
           this->poll_external_command();
 
           if (this->control_type_ != network_interfaces::control_type_t::EFFORT) {
+            if (this->control_type_ == network_interfaces::control_type_t::UNDEFINED) {
+              throw franka::ControlException("Control type reset!");
+            }
             throw IncompatibleControlTypeException("Control type changed!");
           }
 
