@@ -54,8 +54,8 @@ char* parse_option(char** begin, char** end, const std::string& option) {
 int main(int argc, char** argv) {
   setvbuf(stdout, nullptr, _IONBF, BUFSIZ);
 
-  std::string
-      help_message = "Usage: franka_lightweight_interface robot-id prefix [--damping <level>] [--sensitivity <level>]";
+  std::string help_message = "Usage: franka_lightweight_interface robot-id prefix ";
+  help_message += "[--damping <high|medium|low|off>] [--sensitivity <high|medium|low>]";
   std::string robot_ip = "172.16.0.2";
   std::string state_uri = "0.0.0.0:1601";
   std::string command_uri = "0.0.0.0:1602";
@@ -81,7 +81,7 @@ int main(int argc, char** argv) {
 
   FrankaLightWeightInterface flwi(robot_ip, state_uri, command_uri, prefix);
 
-  char* option = parse_option(argv, argv + argc, "--joint-damping");
+  char* option = parse_option(argv, argv + argc, "--damping");
   if (option) {
     std::string joint_damping = std::string(option);
     if (joint_damping != "off" && joint_damping != "low" && joint_damping != "medium" && joint_damping != "high") {
@@ -93,7 +93,7 @@ int main(int argc, char** argv) {
     set_joint_damping(joint_damping, flwi);
   }
 
-  option = parse_option(argv, argv + argc, "--collision-sensitivity");
+  option = parse_option(argv, argv + argc, "--sensitivity");
   if (option) {
     std::string collision_sensitivity = std::string(option);
     if (collision_sensitivity != "low" && collision_sensitivity != "medium" && collision_sensitivity != "high") {
