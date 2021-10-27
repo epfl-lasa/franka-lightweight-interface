@@ -5,7 +5,9 @@
 using namespace frankalwi;
 
 static void set_joint_damping(const std::string& level, FrankaLightWeightInterface& flwi) {
-  if (level == "low") {
+  if (level == "off") {
+    flwi.set_damping_gains({{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}});
+  } else if (level == "low") {
     flwi.set_damping_gains({{1.0, 1.0, 0.9, 0.9, 0.8, 0.7, 0.6}});
   } else if (level == "medium") {
     flwi.set_damping_gains({{5.0, 5.0, 4.5, 4.5, 4.0, 3.5, 3.0}});
@@ -52,8 +54,8 @@ char* parse_option(char** begin, char** end, const std::string& option) {
 int main(int argc, char** argv) {
   setvbuf(stdout, nullptr, _IONBF, BUFSIZ);
 
-  std::string help_message =
-      "Usage: franka_lightweight_interface robot-id prefix [--joint-damping <level>] [--collision-sensitivity <level>]";
+  std::string
+      help_message = "Usage: franka_lightweight_interface robot-id prefix [--damping <level>] [--sensitivity <level>]";
   std::string robot_ip = "172.16.0.2";
   std::string state_uri = "0.0.0.0:1601";
   std::string command_uri = "0.0.0.0:1602";
@@ -82,8 +84,8 @@ int main(int argc, char** argv) {
   char* option = parse_option(argv, argv + argc, "--joint-damping");
   if (option) {
     std::string joint_damping = std::string(option);
-    if (joint_damping != "low" && joint_damping != "medium" && joint_damping != "high") {
-      std::cerr << "Provide one of (low, medium, high) for option --joint-damping" << std::endl << help_message
+    if (joint_damping != "off" && joint_damping != "low" && joint_damping != "medium" && joint_damping != "high") {
+      std::cerr << "Provide one of (off, low, medium, high) for option --damping" << std::endl << help_message
                 << std::endl;
       return 1;
     }
@@ -95,7 +97,7 @@ int main(int argc, char** argv) {
   if (option) {
     std::string collision_sensitivity = std::string(option);
     if (collision_sensitivity != "low" && collision_sensitivity != "medium" && collision_sensitivity != "high") {
-      std::cerr << "Provide one of (low, medium, high) for option --collision-sensitivity" << std::endl << help_message
+      std::cerr << "Provide one of (low, medium, high) for option --sensitivity" << std::endl << help_message
                 << std::endl;
       return 1;
     }
