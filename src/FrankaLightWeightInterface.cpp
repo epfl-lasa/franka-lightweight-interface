@@ -14,6 +14,12 @@ static CollisionBehaviour default_collision_behaviour() {
           {{20.0, 20.0, 20.0, 25.0, 25.0, 25.0}}, {{20.0, 20.0, 20.0, 25.0, 25.0, 25.0}}};
 }
 
+static Eigen::Array<double, 7, 1> default_damping_gains() {
+  Eigen::ArrayXd gains = Eigen::ArrayXd(7);
+  gains << 25.0, 25.0, 25.0, 25.0, 15.0, 15.0, 5.0;
+  return gains;
+}
+
 FrankaLightWeightInterface::FrankaLightWeightInterface(
     std::string robot_ip, std::string state_uri, std::string command_uri, std::string prefix
 ) :
@@ -24,6 +30,8 @@ FrankaLightWeightInterface::FrankaLightWeightInterface(
     state_uri_(std::move(state_uri)),
     command_uri_(std::move(command_uri)),
     zmq_context_(1),
+    control_type_(network_interfaces::control_type_t::UNDEFINED),
+    damping_gains_(default_damping_gains()),
     collision_behaviour_(default_collision_behaviour()) {
 }
 
@@ -53,7 +61,6 @@ void FrankaLightWeightInterface::init() {
   this->state_.mass =
       state_representation::Parameter<Eigen::MatrixXd>(this->prefix_ + "mass", Eigen::MatrixXd::Zero(7, 7));
 
-  this->control_type_ = network_interfaces::control_type_t::UNDEFINED;
   this->command_.control_type = std::vector<int>{static_cast<int>(this->control_type_)};
   this->command_.joint_state = state_representation::JointState("franka", 7);
 
@@ -65,6 +72,14 @@ void FrankaLightWeightInterface::reset_command() {
   this->command_.joint_state.set_velocities(Eigen::VectorXd::Zero(7));
   this->command_.joint_state.set_accelerations(Eigen::VectorXd::Zero(7));
   this->command_.joint_state.set_torques(Eigen::VectorXd::Zero(7));
+}
+
+void FrankaLightWeightInterface::set_damping_gains(const Eigen::Array<double, 7, 1>& damping_gains) {
+  this->damping_gains_ = damping_gains;
+}
+
+void FrankaLightWeightInterface::set_damping_gains(const std::array<double, 7>& damping_gains) {
+  this->set_damping_gains(Eigen::ArrayXd::Map(damping_gains.data(), 7));
 }
 
 void FrankaLightWeightInterface::set_collision_behaviour(
@@ -167,7 +182,7 @@ void FrankaLightWeightInterface::read_robot_state(const franka::RobotState& robo
   this->state_.jacobian.set_data(Eigen::Map<const Eigen::Matrix<double, 6, 7>>(jacobian_array.data()));
 
   std::array<double, 49> current_mass_array = this->franka_model_->mass(robot_state);
-  this->state_.mass.set_value(Eigen::Map<const Eigen::Matrix<double, 7, 7> >(current_mass_array.data()));
+  this->state_.mass.set_value(Eigen::Map<const Eigen::Matrix<double, 7, 7>>(current_mass_array.data()));
 
   // get the twist from jacobian and current joint velocities
   this->state_.ee_state.set_twist(this->state_.jacobian * this->state_.joint_state.get_velocities());
@@ -203,13 +218,9 @@ void FrankaLightWeightInterface::run_joint_torques_controller() {
       this->collision_behaviour_.lftn, this->collision_behaviour_.uftn
   );
 
-  // Set joint damping.
-  Eigen::ArrayXd d_gains = Eigen::ArrayXd(7);
-  d_gains << 25.0, 25.0, 25.0, 25.0, 15.0, 15.0, 5.0;
-
   try {
     this->franka_robot_->control(
-        [this, d_gains](
+        [this](
             const franka::RobotState& robot_state, franka::Duration
         ) -> franka::Torques {
           // check the local socket for a torque command
@@ -237,7 +248,7 @@ void FrankaLightWeightInterface::run_joint_torques_controller() {
 
           std::array<double, 7> torques{};
           Eigen::VectorXd::Map(&torques[0], 7) = this->command_.joint_state.get_torques().array()
-              - d_gains * this->state_.joint_state.get_velocities().array() + coriolis.array();
+              - this->damping_gains_ * this->state_.joint_state.get_velocities().array() + coriolis.array();
 
           // write the state out to the local socket
           this->publish_robot_state();
