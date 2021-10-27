@@ -47,6 +47,7 @@ private:
   network_interfaces::zmq::StateMessage state_;
   network_interfaces::zmq::CommandMessage command_;
   network_interfaces::control_type_t control_type_;
+  Eigen::ArrayXd damping_gains_;
   CollisionBehaviour collision_behaviour_;
   std::chrono::steady_clock::time_point last_command_;
   std::chrono::milliseconds command_timeout_ = std::chrono::milliseconds(500);
@@ -80,6 +81,18 @@ public:
    * @return the mutex attribute
    */
   std::mutex& get_mutex();
+
+  /**
+   * @brief Set the joint damping gains.
+   * @param[in] damping_gains The desired array of damping gains per joint.
+   */
+  void set_damping_gains(const Eigen::Array<double, 7, 1>& damping_gains);
+
+  /**
+   * @brief Set the joint damping gains.
+   * @param[in] damping_gains The desired array of damping gains per joint.
+   */
+  void set_damping_gains(const std::array<double, 7>& damping_gains);
 
   /**
    * @brief Set the collision behaviour.

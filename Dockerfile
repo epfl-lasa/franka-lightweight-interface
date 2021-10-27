@@ -17,7 +17,7 @@ RUN cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF .. && cmake --build . && 
 
 WORKDIR /source
 RUN git clone -b develop --single-branch https://github.com/epfl-lasa/control-libraries.git
-RUN cd control-libraries/source && sudo ./install.sh --auto
+RUN cd control-libraries/source && sudo ./install.sh --auto --no-controllers --no-dynamical-systems --no-robot-model
 RUN cd control-libraries/protocol && sudo ./install.sh --auto
 RUN rm -rf /source/control-libraries
 
