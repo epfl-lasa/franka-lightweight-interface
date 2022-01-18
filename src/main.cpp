@@ -6,13 +6,13 @@ using namespace frankalwi;
 
 static void set_joint_damping(const std::string& level, FrankaLightWeightInterface& flwi) {
   if (level == "off") {
-    flwi.set_damping_gains({{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}});
+    flwi.set_damping_gains(Eigen::Array<double, 7, 1>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
   } else if (level == "low") {
-    flwi.set_damping_gains({{1.0, 1.0, 0.9, 0.9, 0.8, 0.7, 0.6}});
+    flwi.set_damping_gains(Eigen::Array<double, 7, 1>{1.0, 1.0, 0.9, 0.9, 0.8, 0.7, 0.6});
   } else if (level == "medium") {
-    flwi.set_damping_gains({{5.0, 5.0, 4.5, 4.5, 4.0, 3.5, 3.0}});
+    flwi.set_damping_gains(Eigen::Array<double, 7, 1>{5.0, 5.0, 4.5, 4.5, 4.0, 3.5, 3.0});
   } else if (level == "high") {
-    flwi.set_damping_gains({{20.0, 20.0, 18.0, 18.0, 16.0, 14.0, 12.0}});
+    flwi.set_damping_gains(Eigen::Array<double, 7, 1>{20.0, 20.0, 18.0, 18.0, 16.0, 14.0, 12.0});
   }
 }
 
