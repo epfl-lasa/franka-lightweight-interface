@@ -14,19 +14,15 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   	add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-include(FindProtobuf)
+find_package(cppzmq REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(Franka 0.8.0 REQUIRED)
-find_package(cppzmq REQUIRED)
-find_library(clproto NAMES libclproto.so REQUIRED)
-find_library(protobuf NAMES libprotobuf.so REQUIRED)
-find_library(state_representation 4.0.0 NAMES libstate_representation.so REQUIRED)
+find_library(clproto REQUIRED)
+find_library(network_interfaces REQUIRED)
+find_library(state_representation REQUIRED)
 
 include_directories(
 		include
-		${Eigen3_INCLUDE_DIRS}
-		/usr/local/include/eigen3/
-		lib/network-interfaces/cpp/include
 )
 
 set(CORE_SOURCES
@@ -35,11 +31,11 @@ set(CORE_SOURCES
 )
 
 add_executable(${PROJECT_NAME} ${CORE_SOURCES})
-target_link_libraries(${PROJECT_NAME} franka clproto cppzmq ${PROTOBUF_LIBRARY} state_representation)
+target_link_libraries(${PROJECT_NAME} franka clproto cppzmq state_representation)
 
 install(TARGETS ${PROJECT_NAME}
 		RUNTIME DESTINATION bin
 )
 
 add_executable(example_joint_position_controller examples/joint_position_controller.cpp)
-target_link_libraries(example_joint_position_controller clproto cppzmq ${PROTOBUF_LIBRARY} state_representation)
+target_link_libraries(example_joint_position_controller clproto cppzmq state_representation)
