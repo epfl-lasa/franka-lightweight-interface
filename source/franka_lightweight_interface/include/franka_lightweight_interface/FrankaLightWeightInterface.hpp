@@ -10,8 +10,7 @@
 #include <franka/exception.h>
 #include <franka/model.h>
 #include <franka/robot.h>
-
-#include "network_interfaces/zmq/network.h"
+#include <network_interfaces/zmq/network.h>
 
 namespace frankalwi {
 
