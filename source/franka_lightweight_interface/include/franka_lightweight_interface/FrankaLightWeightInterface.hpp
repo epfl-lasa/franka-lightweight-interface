@@ -192,6 +192,12 @@ public:
    */
   void run_joint_torques_controller();
 
+  /**
+     * @brief Run the joint position controller
+     * that reads commands from the joint position subscription
+     */
+    void run_joint_positions_controller();
+
 };
 
 inline bool FrankaLightWeightInterface::is_connected() const {

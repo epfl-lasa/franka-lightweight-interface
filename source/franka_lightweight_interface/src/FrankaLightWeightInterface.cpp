@@ -115,6 +115,10 @@ void FrankaLightWeightInterface::run_controller() {
             std::cout << "Starting joint torque controller..." << std::endl;
             this->run_joint_torques_controller();
             break;
+            case network_interfaces::control_type_t::POSITION:
+            std::cout << "Starting joint position controller..." << std::endl;
+            this->run_joint_positions_controller();
+            break;
           default:
             std::cout << "Unimplemented control type! (" << this->control_type_ << ")" << std::endl;
             this->control_type_ = network_interfaces::control_type_t::UNDEFINED;
@@ -206,6 +210,61 @@ void FrankaLightWeightInterface::run_state_publisher() {
   } catch (const franka::Exception& e) {
     std::cerr << e.what() << std::endl;
   }
+}
+
+void FrankaLightWeightInterface::run_joint_positions_controller() {
+
+  // Set collision behavior.
+  /*this->franka_robot_->setCollisionBehavior(
+      this->collision_behaviour_.ltta, this->collision_behaviour_.utta, this->collision_behaviour_.lttn,
+      this->collision_behaviour_.uttn, this->collision_behaviour_.lfta, this->collision_behaviour_.ufta,
+      this->collision_behaviour_.lftn, this->collision_behaviour_.uftn
+  );*/
+  this->franka_robot_->setCollisionBehavior(
+        {{20.0, 20.0, 18.0, 18.0, 16.0, 14.0, 12.0}}, {{20.0, 20.0, 18.0, 18.0, 16.0, 14.0, 12.0}},
+        {{20.0, 20.0, 18.0, 18.0, 16.0, 14.0, 12.0}}, {{20.0, 20.0, 18.0, 18.0, 16.0, 14.0, 12.0}},
+        {{20.0, 20.0, 20.0, 25.0, 25.0, 25.0}}, {{20.0, 20.0, 20.0, 25.0, 25.0, 25.0}},
+        {{20.0, 20.0, 20.0, 25.0, 25.0, 25.0}}, {{20.0, 20.0, 20.0, 25.0, 25.0, 25.0}});
+
+
+  this->franka_robot_->setJointImpedance({{300, 300, 300, 250, 250, 200, 200}});
+
+  try {
+    this->franka_robot_->control(
+        [this](
+            const franka::RobotState& robot_state, franka::Duration
+        ) -> franka::JointPositions {
+          // check the local socket for a position command
+          this->poll_external_command();
+
+          if (this->control_type_ != network_interfaces::control_type_t::POSITION) {
+            if (this->control_type_ == network_interfaces::control_type_t::UNDEFINED) {
+              throw franka::ControlException("Control type reset!");
+            }
+            throw IncompatibleControlTypeException("Control type changed!");
+          }
+
+          // lock mutex
+          std::lock_guard<std::mutex> lock(this->get_mutex());
+          // extract current state
+          this->read_robot_state(robot_state);
+
+          std::array<double, 7> positions{};
+          Eigen::VectorXd::Map(&positions[0], 7) = this->command_.joint_state.get_positions().array();
+          
+          // write the state out to the local socket
+          this->publish_robot_state();
+
+          franka::JointPositions frankaPositions = {positions};
+
+          //return torques;
+          return frankaPositions;
+        }
+    );
+  } catch (const franka::Exception& e) {
+    std::cerr << e.what() << std::endl;
+  }
+
 }
 
 void FrankaLightWeightInterface::run_joint_torques_controller() {
