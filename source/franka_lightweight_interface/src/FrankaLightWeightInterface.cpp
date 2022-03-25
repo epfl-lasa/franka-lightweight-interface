@@ -43,8 +43,8 @@ void FrankaLightWeightInterface::init() {
 
   // create zmq connections with an external controller
   // TODO: find a better way to pass in port number
-  network_interfaces::zmq::configure_subscriber(this->zmq_context_, this->zmq_subscriber_, this->command_uri_, false);
-  network_interfaces::zmq::configure_publisher(this->zmq_context_, this->zmq_publisher_, this->state_uri_, false);
+  network_interfaces::zmq::configure_subscriber(this->zmq_context_, this->zmq_subscriber_, this->command_uri_, true);
+  network_interfaces::zmq::configure_publisher(this->zmq_context_, this->zmq_publisher_, this->state_uri_, true);
 
   if (this->prefix_.empty()) {
     this->prefix_ = "franka_";
