@@ -16,6 +16,17 @@ static void set_joint_damping(const std::string& level, FrankaLightWeightInterfa
   }
 }
 
+static void set_joint_impedance(const std::string& level, FrankaLightWeightInterface& flwi) {
+  // TODO find three different levels
+  if (level == "low") {
+    flwi.set_impedance(Eigen::Array<double, 7, 1>{3000, 3000, 3000, 2500, 2500, 2000, 2000});
+  } else if (level == "medium") {
+    flwi.set_impedance(Eigen::Array<double, 7, 1>{3000, 3000, 3000, 2500, 2500, 2000, 2000});
+  } else if (level == "high") {
+    flwi.set_impedance(Eigen::Array<double, 7, 1>{3000, 3000, 3000, 2500, 2500, 2000, 2000});
+  }
+}
+
 static void set_collision_behaviour(const std::string& level, FrankaLightWeightInterface& flwi) {
   if (level == "low") {
     flwi.set_collision_behaviour(
@@ -103,6 +114,18 @@ int main(int argc, char** argv) {
     }
     std::cout << "Using collision sensitivity level " << collision_sensitivity << std::endl;
     set_collision_behaviour(collision_sensitivity, flwi);
+  }
+
+  option = parse_option(argv, argv + argc, "--joint-impedance");
+  if (option) {
+    std::string joint_impedance = std::string(option);
+    if (joint_impedance != "low" && joint_impedance != "medium" && joint_impedance != "high") {
+      std::cerr << "Provide one of (low, medium, high) for option --joint-impedance" << std::endl << help_message
+                << std::endl;
+      return 1;
+    }
+    std::cout << "Using joint impedance level " << joint_impedance << std::endl;
+    set_joint_impedance(joint_impedance, flwi);
   }
 
   flwi.init();

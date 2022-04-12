@@ -20,6 +20,10 @@ static Eigen::Array<double, 7, 1> default_damping_gains() {
   return gains;
 }
 
+static std::array<double, 7> default_impedance_values() {
+  return {3000, 3000, 3000, 2500, 2500, 2000, 2000};
+}
+
 FrankaLightWeightInterface::FrankaLightWeightInterface(
     std::string robot_ip, std::string state_uri, std::string command_uri, std::string prefix
 ) :
@@ -32,6 +36,7 @@ FrankaLightWeightInterface::FrankaLightWeightInterface(
     zmq_context_(1),
     control_type_(network_interfaces::control_type_t::UNDEFINED),
     damping_gains_(default_damping_gains()),
+    impedance_values_(default_impedance_values()),
     collision_behaviour_(default_collision_behaviour()) {
 }
 
@@ -80,6 +85,18 @@ void FrankaLightWeightInterface::set_damping_gains(const Eigen::Array<double, 7,
 
 void FrankaLightWeightInterface::set_damping_gains(const std::array<double, 7>& damping_gains) {
   this->set_damping_gains(Eigen::ArrayXd::Map(damping_gains.data(), 7));
+}
+
+void FrankaLightWeightInterface::set_impedance(const Eigen::Array<double, 7, 1>& impedance_values) {
+  std::array<double, 7> values{};
+  for (std::size_t i = 0; i < 7; ++i) {
+    values.at(i) = impedance_values(i);
+  }
+  this->set_impedance(values);
+}
+
+void FrankaLightWeightInterface::set_impedance(const std::array<double, 7>& impedance_values) {
+  this->impedance_values_ = impedance_values;
 }
 
 void FrankaLightWeightInterface::set_collision_behaviour(

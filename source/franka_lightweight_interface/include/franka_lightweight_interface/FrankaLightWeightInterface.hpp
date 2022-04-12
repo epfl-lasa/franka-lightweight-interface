@@ -47,6 +47,7 @@ private:
   network_interfaces::zmq::CommandMessage command_;
   network_interfaces::control_type_t control_type_;
   Eigen::ArrayXd damping_gains_;
+  std::array<double, 7> impedance_values_;
   CollisionBehaviour collision_behaviour_;
   std::chrono::steady_clock::time_point last_command_;
   std::chrono::milliseconds command_timeout_ = std::chrono::milliseconds(500);
@@ -92,6 +93,18 @@ public:
    * @param[in] damping_gains The desired array of damping gains per joint.
    */
   void set_damping_gains(const std::array<double, 7>& damping_gains);
+
+  /**
+   * @brief Set the joint impedance.
+   * @param[in] impedance_values The desired array of impedance values per joint.
+   */
+  void set_impedance(const Eigen::Array<double, 7, 1>& impedance_values);
+
+  /**
+   * @brief Set the joint impedance.
+   * @param[in] impedance_values The desired array of impedance values per joint.
+   */
+  void set_impedance(const std::array<double, 7>& impedance_values);
 
   /**
    * @brief Set the collision behaviour.
@@ -185,6 +198,12 @@ public:
    * @brief Read and publish the robot state while no control commands are received
    */
   void run_state_publisher();
+
+  /**
+   * @brief Run the joint velocities controller
+   * that reads commands from the joint velocities subscription
+   */
+  void run_joint_velocities_controller();
 
   /**
    * @brief Run the joint torques controller
