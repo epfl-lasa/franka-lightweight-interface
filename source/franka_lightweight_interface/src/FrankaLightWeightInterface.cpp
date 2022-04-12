@@ -132,6 +132,10 @@ void FrankaLightWeightInterface::run_controller() {
             std::cout << "Starting joint torque controller..." << std::endl;
             this->run_joint_torques_controller();
             break;
+          case network_interfaces::control_type_t::VELOCITY:
+            std::cout << "Starting joint velocity controller..." << std::endl;
+            this->run_joint_velocities_controller();
+            break;
           default:
             std::cout << "Unimplemented control type! (" << this->control_type_ << ")" << std::endl;
             this->control_type_ = network_interfaces::control_type_t::UNDEFINED;
@@ -218,6 +222,53 @@ void FrankaLightWeightInterface::run_state_publisher() {
           this->read_robot_state(robot_state);
           this->publish_robot_state();
           return true;
+        }
+    );
+  } catch (const franka::Exception& e) {
+    std::cerr << e.what() << std::endl;
+  }
+}
+
+void FrankaLightWeightInterface::run_joint_velocities_controller() {
+  // Set additional parameters always before the control loop, NEVER in the control loop!
+
+  this->franka_robot_->setJointImpedance(this->impedance_values_);
+
+  // Set collision behavior.
+  this->franka_robot_->setCollisionBehavior(
+      this->collision_behaviour_.ltta, this->collision_behaviour_.utta, this->collision_behaviour_.lttn,
+      this->collision_behaviour_.uttn, this->collision_behaviour_.lfta, this->collision_behaviour_.ufta,
+      this->collision_behaviour_.lftn, this->collision_behaviour_.uftn
+  );
+
+  try {
+    this->franka_robot_->control(
+        [this](
+            const franka::RobotState& robot_state, franka::Duration
+        ) -> franka::JointVelocities {
+          // check the local socket for a torque command
+          this->poll_external_command();
+
+          if (this->control_type_ != network_interfaces::control_type_t::VELOCITY) {
+            if (this->control_type_ == network_interfaces::control_type_t::UNDEFINED) {
+              throw franka::ControlException("Control type reset!");
+            }
+            throw IncompatibleControlTypeException("Control type changed!");
+          }
+
+          // lock mutex
+          std::lock_guard<std::mutex> lock(this->get_mutex());
+          // extract current state
+          this->read_robot_state(robot_state);
+
+          std::array<double, 7> velocities{};
+          Eigen::VectorXd::Map(&velocities[0], 7) = this->command_.joint_state.get_velocities().array();
+
+          // write the state out to the local socket
+          this->publish_robot_state();
+
+          //return velocities;
+          return velocities;
         }
     );
   } catch (const franka::Exception& e) {
