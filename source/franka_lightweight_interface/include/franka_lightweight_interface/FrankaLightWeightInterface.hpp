@@ -52,6 +52,9 @@ private:
   std::chrono::milliseconds command_timeout_ = std::chrono::milliseconds(500);
   std::mutex mutex_;
 
+  Eigen::Vector<double, 7> previous_torque;
+  Eigen::Vector<double, 7> joint_friction;
+
   void print_state() const;
 
 public:
