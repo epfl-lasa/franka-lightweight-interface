@@ -38,6 +38,8 @@ FrankaLightWeightInterface::FrankaLightWeightInterface(
     joint_damping_gains_(default_joint_damping_gains()),
     joint_impedance_values_(default_joint_impedance_values()),
     collision_behaviour_(default_collision_behaviour()) {
+    previous_torque(Eigen::Vector<double, 7>::Zero()),
+    joint_friction(Eigen::Vector<double, 7>::Zero()) {
 }
 
 void FrankaLightWeightInterface::init() {
@@ -314,14 +316,33 @@ void FrankaLightWeightInterface::run_joint_torques_controller() {
           std::array<double, 49> mass_array = franka_model_->mass(robot_state);
           Eigen::Map<const Eigen::Matrix<double, 7, 7> > mass(mass_array.data());
 
+          // Get the gravity vector
+          std::array<double, 7> gravity_array = this->franka_model_->gravity(robot_state);
+          Eigen::Map<const Eigen::Matrix<double, 7, 1> > gravity(gravity_array.data());
+
+          // Estimate friction
+          // double alpha = 0.02;
+          // Eigen::Vector<double, 7> new_friction = this->previous_torque - this->state_.joint_state.get_torques() + gravity;
+          // Eigen::Vector<double, 7> filtered_friction = alpha*new_friction + (1-alpha)*this->joint_friction;
+          // this->joint_friction = filtered_friction;
+          // double friction_compensation;
+          // if (this->command_.joint_state.get_torques().isZero()) friction_compensation = 0.3;
+          // else friction_compensation = 0.0;
+
           std::array<double, 7> torques{};
           Eigen::VectorXd::Map(&torques[0], 7) = this->command_.joint_state.get_torques().array()
               - this->joint_damping_gains_ * this->state_.joint_state.get_velocities().array() + coriolis.array();
+              // + friction_compensation*this->joint_friction.array();
+
+          // this->previous_torque = Eigen::Map<const Eigen::Vector<double, 7>>(torques.data());
 
           // write the state out to the local socket
           this->publish_robot_state();
 
-          //return torques;
+          //return torques;          
+          // for(auto const& value : torques) std::cout << value << "; ";
+          // std::cout << std::endl;
+
           return torques;
         }
     );
