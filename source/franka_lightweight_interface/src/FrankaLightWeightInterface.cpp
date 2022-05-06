@@ -321,27 +321,27 @@ void FrankaLightWeightInterface::run_joint_torques_controller() {
           Eigen::Map<const Eigen::Matrix<double, 7, 1> > gravity(gravity_array.data());
 
           // Estimate friction
-          // double alpha = 0.02;
-          // Eigen::Vector<double, 7> new_friction = this->previous_torque - this->state_.joint_state.get_torques() + gravity;
-          // Eigen::Vector<double, 7> filtered_friction = alpha*new_friction + (1-alpha)*this->joint_friction;
-          // this->joint_friction = filtered_friction;
-          // double friction_compensation;
-          // if (this->command_.joint_state.get_torques().isZero()) friction_compensation = 0.3;
-          // else friction_compensation = 0.0;
+          double alpha = 0.02;
+          Eigen::Vector<double, 7> new_friction = this->previous_torque - this->state_.joint_state.get_torques() + gravity;
+          Eigen::Vector<double, 7> filtered_friction = alpha*new_friction + (1-alpha)*this->joint_friction;
+          this->joint_friction = filtered_friction;
+          double friction_compensation = 0.0;
+          if (this->command_.joint_state.get_velocities().isZero()) friction_compensation = 0.3;
+          else friction_compensation = 0.9;
+          Eigen::Vector<double, 7> friction_correction = friction_compensation*this->joint_friction;
+          std::cout << friction_correction.transpose() << std::endl;
+
+          Eigen::Vector<double, 7> torque_command = this->command_.joint_state.get_torques().array()
+              - this->joint_damping_gains_ * this->state_.joint_state.get_velocities().array() + coriolis.array() + friction_correction.array();
+
+          this->previous_torque = torque_command;
+
 
           std::array<double, 7> torques{};
-          Eigen::VectorXd::Map(&torques[0], 7) = this->command_.joint_state.get_torques().array()
-              - this->joint_damping_gains_ * this->state_.joint_state.get_velocities().array() + coriolis.array();
-              // + friction_compensation*this->joint_friction.array();
-
-          // this->previous_torque = Eigen::Map<const Eigen::Vector<double, 7>>(torques.data());
+          Eigen::VectorXd::Map(&torques[0], 7) = torque_command.array() ;
 
           // write the state out to the local socket
           this->publish_robot_state();
-
-          //return torques;          
-          // for(auto const& value : torques) std::cout << value << "; ";
-          // std::cout << std::endl;
 
           return torques;
         }
