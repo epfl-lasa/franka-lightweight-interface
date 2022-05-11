@@ -327,9 +327,9 @@ void FrankaLightWeightInterface::run_joint_torques_controller() {
           this->joint_friction = filtered_friction;
           double friction_compensation = 0.0;
           if (this->command_.joint_state.get_velocities().isZero()) friction_compensation = 0.3;
-          else friction_compensation = 0.9;
+          else friction_compensation = 1.0;
           Eigen::Vector<double, 7> friction_correction = friction_compensation*this->joint_friction;
-          std::cout << friction_correction.transpose() << std::endl;
+          // std::cout << friction_correction.transpose() << std::endl;
 
           Eigen::Vector<double, 7> torque_command = this->command_.joint_state.get_torques().array()
               - this->joint_damping_gains_ * this->state_.joint_state.get_velocities().array() + coriolis.array() + friction_correction.array();
