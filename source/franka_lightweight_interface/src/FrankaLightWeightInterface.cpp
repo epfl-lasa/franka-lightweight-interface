@@ -30,12 +30,16 @@ FrankaLightWeightInterface::FrankaLightWeightInterface(
     state_uri_(std::move(state_uri)),
     command_uri_(std::move(command_uri)),
     zmq_context_(1),
-    control_type_(network_interfaces::control_type_t::UNDEFINED),
+    control_type_(network_interfaces::control_type_t::EFFORT),
     damping_gains_(default_damping_gains()),
     collision_behaviour_(default_collision_behaviour()) {
 }
 
 void FrankaLightWeightInterface::init() {
+
+  this->logFile.open("franka_lightweight_interface/analysis/data_accel.txt");
+
+
   // create connection to the robot
   this->franka_robot_ = std::make_unique<franka::Robot>(this->robot_ip_);
   this->franka_model_ = std::make_unique<franka::Model>(this->franka_robot_->loadModel());
@@ -246,9 +250,43 @@ void FrankaLightWeightInterface::run_joint_torques_controller() {
           std::array<double, 49> mass_array = franka_model_->mass(robot_state);
           Eigen::Map<const Eigen::Matrix<double, 7, 7> > mass(mass_array.data());
 
+          // Get the gravity vector
+          std::array<double, 7> gravity_array = this->franka_model_->gravity(robot_state);
+          Eigen::Map<const Eigen::Matrix<double, 7, 1> > gravity(gravity_array.data());
+
+          Eigen::Matrix<double, 7, 1> impulseTorque;
+          impulseTorque << 3, 3, 3, 2, 2, 1;
+
+          static int counter =0;
+          if (counter < 500){
+             this->command_.joint_state.set_torques(impulseTorque);
+             counter ++;
+          }
+          else if (counter >= 500 && counter < 1000){
+             this->command_.joint_state.set_torques(-impulseTorque);
+             counter ++;
+          }
+          else this->command_.joint_state.set_torques(Eigen::Matrix<double, 7, 1>::Zero());
+
+         
+
           std::array<double, 7> torques{};
           Eigen::VectorXd::Map(&torques[0], 7) = this->command_.joint_state.get_torques().array()
               - this->damping_gains_ * this->state_.joint_state.get_velocities().array() + coriolis.array();
+
+          // std::cout << "Sending control" << std::endl;
+
+          Eigen::Matrix<double, 7, 1> estimated_joint_accel = mass.colPivHouseholderQr().solve(this->command_.joint_state.get_torques());
+
+          Eigen::Matrix<double, 7, 1> measured_joint_accel = mass.colPivHouseholderQr().solve(this->state_.joint_state.get_torques() - coriolis - gravity);
+
+
+          this->logFile << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch()).count() << " " 
+                        << this->state_.joint_state.get_positions().transpose() << " " 
+                        << estimated_joint_accel.transpose() << " " 
+                        << measured_joint_accel.transpose() << std::endl;
+
+
 
           // write the state out to the local socket
           this->publish_robot_state();

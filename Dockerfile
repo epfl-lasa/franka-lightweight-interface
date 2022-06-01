@@ -18,7 +18,7 @@ COPY --chown=${USER} ./source ./
 RUN cd franka_lightweight_interface && mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && make \
   && make install && ldconfig
 WORKDIR ${HOME}
-RUN rm -rf ${HOME}/franka_lightweight_interface
+#RUN rm -rf ${HOME}/franka_lightweight_interface
 USER ${USER}
 
 ENTRYPOINT /bin/bash

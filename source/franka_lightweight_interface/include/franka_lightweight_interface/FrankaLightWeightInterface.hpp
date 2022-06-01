@@ -1,5 +1,6 @@
 #pragma once
 
+#include <fstream>
 #include <iostream>
 #include <mutex>
 #include <thread>
@@ -51,6 +52,8 @@ private:
   std::chrono::steady_clock::time_point last_command_;
   std::chrono::milliseconds command_timeout_ = std::chrono::milliseconds(500);
   std::mutex mutex_;
+
+  std::ofstream logFile;
 
   void print_state() const;
 
