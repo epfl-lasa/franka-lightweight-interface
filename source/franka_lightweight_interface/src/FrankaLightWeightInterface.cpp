@@ -276,15 +276,21 @@ void FrankaLightWeightInterface::run_joint_torques_controller() {
 
           // std::cout << "Sending control" << std::endl;
 
-          Eigen::Matrix<double, 7, 1> estimated_joint_accel = mass.colPivHouseholderQr().solve(this->command_.joint_state.get_torques());
+          // Eigen::Matrix<double, 7, 1> estimated_joint_accel = mass.colPivHouseholderQr().solve(this->command_.joint_state.get_torques());
+          // Eigen::Matrix<double, 7, 1> measured_joint_accel = mass.colPivHouseholderQr().solve(this->state_.joint_state.get_torques() - coriolis - gravity);
 
-          Eigen::Matrix<double, 7, 1> measured_joint_accel = mass.colPivHouseholderQr().solve(this->state_.joint_state.get_torques() - coriolis - gravity);
+          Eigen::Matrix<double, 7, 1> estimated_joint_accel = this->command_.joint_state.get_torques();
+          Eigen::Matrix<double, 7, 1> measured_joint_accel = this->state_.joint_state.get_torques() - coriolis - gravity;
+          Eigen::MatrixXd flattMass;
+          flattMass = mass;
+          flattMass.resize(1, 49);
 
 
           this->logFile << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch()).count() << " " 
                         << this->state_.joint_state.get_positions().transpose() << " " 
                         << estimated_joint_accel.transpose() << " " 
-                        << measured_joint_accel.transpose() << std::endl;
+                        << measured_joint_accel.transpose() << " " 
+                        << flattMass << std::endl;
 
 
 
