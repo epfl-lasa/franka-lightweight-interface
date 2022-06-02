@@ -10,7 +10,7 @@ time = (time - time[0])*1e-6
 position = data[1:8, :]
 control_torque = data[8:15, :]
 measured_torque = data[15:22, :]
-mass = data[22:].reshape((-1, 7, 7))
+mass = data[22:, :]
 
 measured_torque = savgol_filter(measured_torque, 111, 3)
 
@@ -25,21 +25,25 @@ acceleration = savgol_filter(position, window_length=111, polyorder=3, deriv=2, 
 
 est_torque = np.zeros_like(control_torque)*np.nan
 for i in range((est_torque.shape[1])):
-    est_torque[:, i] = mass[i, :, :]@acceleration[:, i]
+    new_mass = mass[:, i].reshape((7,7))
+    est_torque[:, i] = new_mass@acceleration[:, i]
 
 # Time serie
 fig, axs = plt.subplots(4, 2)
 for i, ax in enumerate(axs.ravel()[:-1]):
-    ax.plot(time, control_torque[i, :], label = "Model")
+    ax.plot(time, control_torque[i, :], label = "Control")
     ax.plot(time, measured_torque[i, :], label="Measured")
-    # ax.plot(time, est_torque[i, :], label="Estimated")
+    ax.plot(time, est_torque[i, :], label="Estimated")
 
-    ax.legend()
+    ax.legend(prop={'size': 6})
     # ax.set(ylabel="joint {} [degree]".format(i))
-
-# fig, axs = plt.subplots(4, 2)
-# for i, ax in enumerate(axs.ravel()[:-1]):
-#     ax.plot(velocity[i, :], accel_error[i, :], "+")
+fig.suptitle("Joint torques [N.m] over time [s]")
+# fig = plt.figure()
+# for i in range(7):
+#     fig = plt.figure()
+#     ax = fig.add_subplot(projection='3d')
+#     # ax = fig.add_subplot(4, 2, i+1, projection='3d')
+#     ax.scatter(position[i, :], velocity[i, :], control_torque[i, :]-est_torque[i, :], "+")
 
 # fig, axs = plt.subplots(4, 2)
 # for i, ax in enumerate(axs.ravel()[:-1]):
@@ -50,9 +54,9 @@ for i, ax in enumerate(axs.ravel()[:-1]):
 #     ax.legend()
 
 
-plt.figure()
-# plt.plot(np.diff(time), "+")
-plt.plot(time, position.T)
+# plt.figure()
+# # plt.plot(np.diff(time), "+")
+# plt.plot(time, position.T)
 
 
 

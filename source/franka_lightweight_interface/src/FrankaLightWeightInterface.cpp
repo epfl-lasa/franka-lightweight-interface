@@ -254,41 +254,46 @@ void FrankaLightWeightInterface::run_joint_torques_controller() {
           std::array<double, 7> gravity_array = this->franka_model_->gravity(robot_state);
           Eigen::Map<const Eigen::Matrix<double, 7, 1> > gravity(gravity_array.data());
 
-          Eigen::Matrix<double, 7, 1> impulseTorque;
-          impulseTorque << 3, 3, 3, 2, 2, 1;
+          static float joint_error = 0;
+          static Eigen::Matrix<double, 7, 1> joint_target;
 
-          static int counter =0;
-          if (counter < 500){
-             this->command_.joint_state.set_torques(impulseTorque);
-             counter ++;
-          }
-          else if (counter >= 500 && counter < 1000){
-             this->command_.joint_state.set_torques(-impulseTorque);
-             counter ++;
-          }
-          else this->command_.joint_state.set_torques(Eigen::Matrix<double, 7, 1>::Zero());
+          std::vector<double> min_range = {-2.8973,	-1.7628,	-2.8973,	-3.0718,	-2.8973,	-0.0175,	-2.8973};
+          std::vector<double> max_range = {2.8973, 1.7628,	2.8973,	-0.0698,	2.8973,	3.7525,	2.8973};
 
-         
+          if (joint_error < 0.2){
+            std::random_device rd;  // Will be used to obtain a seed for the random number engine
+            std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
+            
+            for(i=0; i<7; i++){
+              std::uniform_real_distribution<> dis(min_range(i), max_range(i));
+              joint_target(i) = dis(gen);
+            }
+
+            std::cout << joint_target.transpose() << std::endl;
+          }
+
+          joint_error = (joint_target - command_.joint_state.get_positions()).norm();
+
+          Eigen::Matrix<double, 7, 1> commandTorque;
+          commandTorque = 10*(joint_target - command_.joint_state.get_positions()) - 1*command_.joint_state.get_velocities();
+  
+          command_.joint_state.set_torques(commandTorque);
 
           std::array<double, 7> torques{};
           Eigen::VectorXd::Map(&torques[0], 7) = this->command_.joint_state.get_torques().array()
               - this->damping_gains_ * this->state_.joint_state.get_velocities().array() + coriolis.array();
 
-          // std::cout << "Sending control" << std::endl;
+ 
+          Eigen::Matrix<double, 7, 1> measured_joint_torque = commandTorque - coriolis - gravity;
 
-          // Eigen::Matrix<double, 7, 1> estimated_joint_accel = mass.colPivHouseholderQr().solve(this->command_.joint_state.get_torques());
-          // Eigen::Matrix<double, 7, 1> measured_joint_accel = mass.colPivHouseholderQr().solve(this->state_.joint_state.get_torques() - coriolis - gravity);
-
-          Eigen::Matrix<double, 7, 1> estimated_joint_accel = this->command_.joint_state.get_torques();
-          Eigen::Matrix<double, 7, 1> measured_joint_accel = this->state_.joint_state.get_torques() - coriolis - gravity;
           Eigen::MatrixXd flattMass;
           flattMass = mass;
           flattMass.resize(1, 49);
 
-
+          // Write data to txt file
           this->logFile << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch()).count() << " " 
                         << this->state_.joint_state.get_positions().transpose() << " " 
-                        << estimated_joint_accel.transpose() << " " 
+                        << commandTorque.transpose() << " " 
                         << measured_joint_accel.transpose() << " " 
                         << flattMass << std::endl;
 
