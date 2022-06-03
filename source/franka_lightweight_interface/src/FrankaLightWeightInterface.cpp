@@ -37,6 +37,8 @@ FrankaLightWeightInterface::FrankaLightWeightInterface(
 
 void FrankaLightWeightInterface::init() {
 
+  this->prevTorque = Eigen::Matrix<double, 7, 1>::Zero();
+
   this->logFile.open("franka_lightweight_interface/analysis/data_accel.txt");
 
 
@@ -47,8 +49,8 @@ void FrankaLightWeightInterface::init() {
 
   // create zmq connections with an external controller
   // TODO: find a better way to pass in port number
-  network_interfaces::zmq::configure_subscriber(this->zmq_context_, this->zmq_subscriber_, this->command_uri_, false);
-  network_interfaces::zmq::configure_publisher(this->zmq_context_, this->zmq_publisher_, this->state_uri_, false);
+  network_interfaces::zmq::configure_subscriber(this->zmq_context_, this->zmq_subscriber_, this->command_uri_, true);
+  network_interfaces::zmq::configure_publisher(this->zmq_context_, this->zmq_publisher_, this->state_uri_, true);
 
   if (this->prefix_.empty()) {
     this->prefix_ = "franka_";
@@ -264,7 +266,7 @@ void FrankaLightWeightInterface::run_joint_torques_controller() {
             std::random_device rd;  // Will be used to obtain a seed for the random number engine
             std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
 
-            float margin = 0.7;
+            float margin = 0.65;
             
             for(int i=0; i<7; i++){
               std::uniform_real_distribution<> dis(margin*min_range.at(i), margin*max_range.at(i));
@@ -279,8 +281,17 @@ void FrankaLightWeightInterface::run_joint_torques_controller() {
           // joint_error = (joint_target - this->state_.joint_state.get_positions()).norm();
           // std::cout << (joint_target - this->state_.joint_state.get_positions()).transpose() << std::endl;
 
+          Eigen::Matrix<double, 7, 7> stiffness = Eigen::Matrix<double, 7, 7>::Zero();
+          stiffness.diagonal() << 2, 2, 2, 2, 1, 1, 1;
+
+          Eigen::Matrix<double, 7, 1> newTorque;
+          newTorque = stiffness*(joint_target - this->state_.joint_state.get_positions()) - 1*this->state_.joint_state.get_velocities();
+
+          double alpha = 0.03;
           Eigen::Matrix<double, 7, 1> commandTorque;
-          commandTorque = 1.5*(joint_target - this->state_.joint_state.get_positions()) - 1*this->state_.joint_state.get_velocities();
+          commandTorque = (1-alpha)*this->prevTorque + alpha*newTorque;
+
+          this->prevTorque = commandTorque;
   
           command_.joint_state.set_torques(commandTorque);
 

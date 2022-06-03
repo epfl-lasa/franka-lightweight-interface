@@ -1,6 +1,8 @@
 #pragma once
 
+#include <random>
 #include <fstream>
+
 #include <iostream>
 #include <mutex>
 #include <thread>
@@ -54,6 +56,8 @@ private:
   std::mutex mutex_;
 
   std::ofstream logFile;
+
+  Eigen::Matrix<double, 7, 1> prevTorque;
 
   void print_state() const;
 
