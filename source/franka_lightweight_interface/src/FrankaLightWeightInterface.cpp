@@ -254,28 +254,33 @@ void FrankaLightWeightInterface::run_joint_torques_controller() {
           std::array<double, 7> gravity_array = this->franka_model_->gravity(robot_state);
           Eigen::Map<const Eigen::Matrix<double, 7, 1> > gravity(gravity_array.data());
 
-          static float joint_error = 0;
+          static int count = 0;
           static Eigen::Matrix<double, 7, 1> joint_target;
 
           std::vector<double> min_range = {-2.8973,	-1.7628,	-2.8973,	-3.0718,	-2.8973,	-0.0175,	-2.8973};
           std::vector<double> max_range = {2.8973, 1.7628,	2.8973,	-0.0698,	2.8973,	3.7525,	2.8973};
 
-          if (joint_error < 0.2){
+          if (count > 3000){
             std::random_device rd;  // Will be used to obtain a seed for the random number engine
             std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
+
+            float margin = 0.7;
             
-            for(i=0; i<7; i++){
-              std::uniform_real_distribution<> dis(min_range(i), max_range(i));
+            for(int i=0; i<7; i++){
+              std::uniform_real_distribution<> dis(margin*min_range.at(i), margin*max_range.at(i));
               joint_target(i) = dis(gen);
             }
 
             std::cout << joint_target.transpose() << std::endl;
+            count = 0;
           }
+          count++;
 
-          joint_error = (joint_target - command_.joint_state.get_positions()).norm();
+          // joint_error = (joint_target - this->state_.joint_state.get_positions()).norm();
+          // std::cout << (joint_target - this->state_.joint_state.get_positions()).transpose() << std::endl;
 
           Eigen::Matrix<double, 7, 1> commandTorque;
-          commandTorque = 10*(joint_target - command_.joint_state.get_positions()) - 1*command_.joint_state.get_velocities();
+          commandTorque = 1.5*(joint_target - this->state_.joint_state.get_positions()) - 1*this->state_.joint_state.get_velocities();
   
           command_.joint_state.set_torques(commandTorque);
 
@@ -284,7 +289,7 @@ void FrankaLightWeightInterface::run_joint_torques_controller() {
               - this->damping_gains_ * this->state_.joint_state.get_velocities().array() + coriolis.array();
 
  
-          Eigen::Matrix<double, 7, 1> measured_joint_torque = commandTorque - coriolis - gravity;
+          Eigen::Matrix<double, 7, 1> measured_joint_torque = this->state_.joint_state.get_torques() - coriolis - gravity;
 
           Eigen::MatrixXd flattMass;
           flattMass = mass;
@@ -294,7 +299,7 @@ void FrankaLightWeightInterface::run_joint_torques_controller() {
           this->logFile << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch()).count() << " " 
                         << this->state_.joint_state.get_positions().transpose() << " " 
                         << commandTorque.transpose() << " " 
-                        << measured_joint_accel.transpose() << " " 
+                        << measured_joint_torque.transpose() << " " 
                         << flattMass << std::endl;
 
 

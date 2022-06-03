@@ -2,6 +2,7 @@ from cProfile import label
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
+from mpl_toolkits.mplot3d import axes3d
 
 data = np.loadtxt("analysis/data_accel.txt").T
 
@@ -20,8 +21,9 @@ measured_torque = savgol_filter(measured_torque, 111, 3)
 # est_accel = np.gradient(velocity, time, axis=1)
 # est_accel = savgol_filter(est_accel, 111, 3)
 
-velocity = savgol_filter(position, window_length=111, polyorder=3, deriv=1, delta=1e-3)
-acceleration = savgol_filter(position, window_length=111, polyorder=3, deriv=2, delta=1e-3)
+# TODO: resample with regular time grid to correctly use the derivative
+velocity = savgol_filter(position, window_length=111, polyorder=2, deriv=1, delta=1e-3)
+acceleration = savgol_filter(position, window_length=351, polyorder=2, deriv=2, delta=1e-3)
 
 est_torque = np.zeros_like(control_torque)*np.nan
 for i in range((est_torque.shape[1])):
@@ -38,12 +40,16 @@ for i, ax in enumerate(axs.ravel()[:-1]):
     ax.legend(prop={'size': 6})
     # ax.set(ylabel="joint {} [degree]".format(i))
 fig.suptitle("Joint torques [N.m] over time [s]")
+
+
 # fig = plt.figure()
 # for i in range(7):
 #     fig = plt.figure()
 #     ax = fig.add_subplot(projection='3d')
 #     # ax = fig.add_subplot(4, 2, i+1, projection='3d')
 #     ax.scatter(position[i, :], velocity[i, :], control_torque[i, :]-est_torque[i, :], "+")
+#     ax.set_xlabel("Position")
+#     ax.set_ylabel("Velocity")
 
 # fig, axs = plt.subplots(4, 2)
 # for i, ax in enumerate(axs.ravel()[:-1]):
@@ -51,12 +57,9 @@ fig.suptitle("Joint torques [N.m] over time [s]")
 #     ax.plot(time, velocity[i, :], label="vel")
 #     ax.plot(time, acceleration[i, :], label="acc")
 
-#     ax.legend()
+#     ax.legend(loc='upper right')
 
-
-# plt.figure()
-# # plt.plot(np.diff(time), "+")
-# plt.plot(time, position.T)
+# plt.plot(est_torque[6, :], measured_torque[6, :], "+")
 
 
 
