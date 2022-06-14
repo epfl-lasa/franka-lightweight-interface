@@ -4,16 +4,16 @@
 int main(int argc, char** argv) {
   std::string state_uri = "*:1601";
   std::string command_uri = "*:1602";
-  if (argc == 2 && atof(argv[1]) != 16) {
+  if (argc == 2) {
     if (atof(argv[1]) == 17) {
       state_uri = "*:1701";
       command_uri = "*:1702";
-    } else {
+    } else if (atof(argv[1]) != 16) {
       std::cerr << "This robot is unknown, choose either '16' (default) or '17'." << std::endl;
       return 1;
     }
   } else {
-    std::cerr << "Please provide at one argument to choose which robot to connect to ('16' or '17')." << std::endl;
+    std::cerr << "Please provide at most one argument to choose which robot to connect to ('16' or '17')." << std::endl;
     return 1;
   }
 
