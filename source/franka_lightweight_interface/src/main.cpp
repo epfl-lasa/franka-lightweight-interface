@@ -19,11 +19,11 @@ static void set_joint_damping(const std::string& level, FrankaLightWeightInterfa
 static void set_joint_impedance(const std::string& level, FrankaLightWeightInterface& flwi) {
   // TODO find three different levels
   if (level == "low") {
-    flwi.set_impedance(Eigen::Array<double, 7, 1>{3000, 3000, 3000, 2500, 2500, 2000, 2000});
+    flwi.set_impedance(Eigen::Array<double, 7, 1>{400, 400, 400, 300, 300, 200, 200});
   } else if (level == "medium") {
-    flwi.set_impedance(Eigen::Array<double, 7, 1>{3000, 3000, 3000, 2500, 2500, 2000, 2000});
+    flwi.set_impedance(Eigen::Array<double, 7, 1>{2000, 2000, 2000, 1500, 1500, 1000, 1000});
   } else if (level == "high") {
-    flwi.set_impedance(Eigen::Array<double, 7, 1>{3000, 3000, 3000, 2500, 2500, 2000, 2000});
+    flwi.set_impedance(Eigen::Array<double, 7, 1>{4000, 4000, 4000, 3000, 3000, 2000, 2000});
   }
 }
 
