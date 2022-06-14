@@ -21,7 +21,7 @@ static Eigen::Array<double, 7, 1> default_damping_gains() {
 }
 
 static std::array<double, 7> default_impedance_values() {
-  return {3000, 3000, 3000, 2500, 2500, 2000, 2000};
+  return {2000, 2000, 2000, 1500, 1500, 1000, 1000};
 }
 
 FrankaLightWeightInterface::FrankaLightWeightInterface(
@@ -246,7 +246,7 @@ void FrankaLightWeightInterface::run_joint_velocities_controller() {
         [this](
             const franka::RobotState& robot_state, franka::Duration
         ) -> franka::JointVelocities {
-          // check the local socket for a torque command
+          // check the local socket for a velocity command
           this->poll_external_command();
 
           if (this->control_type_ != network_interfaces::control_type_t::VELOCITY) {
