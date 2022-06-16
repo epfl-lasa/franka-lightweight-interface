@@ -92,6 +92,7 @@ int main(int argc, char** argv) {
 
   FrankaLightWeightInterface flwi(robot_ip, state_uri, command_uri, prefix);
 
+  int provided_options = 0;
   char* option = parse_option(argv, argv + argc, "--joint-damping");
   if (option) {
     std::string joint_damping = std::string(option);
@@ -102,6 +103,7 @@ int main(int argc, char** argv) {
     }
     std::cout << "Using joint damping level " << joint_damping << std::endl;
     set_joint_damping(joint_damping, flwi);
+    ++provided_options;
   }
 
   option = parse_option(argv, argv + argc, "--sensitivity");
@@ -114,6 +116,7 @@ int main(int argc, char** argv) {
     }
     std::cout << "Using collision sensitivity level " << collision_sensitivity << std::endl;
     set_collision_behaviour(collision_sensitivity, flwi);
+    ++provided_options;
   }
 
   option = parse_option(argv, argv + argc, "--joint-impedance");
@@ -126,6 +129,12 @@ int main(int argc, char** argv) {
     }
     std::cout << "Using joint impedance level " << joint_impedance << std::endl;
     set_joint_impedance(joint_impedance, flwi);
+    ++provided_options;
+  }
+
+  if (argc != 2 * provided_options + 3) {
+    std::cerr << "Invalid command line arguments." << std::endl << help_message << std::endl;
+    return 1;
   }
 
   flwi.init();
