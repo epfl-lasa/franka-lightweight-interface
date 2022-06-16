@@ -46,8 +46,8 @@ private:
   network_interfaces::zmq::StateMessage state_;
   network_interfaces::zmq::CommandMessage command_;
   network_interfaces::control_type_t control_type_;
-  Eigen::ArrayXd damping_gains_;
-  std::array<double, 7> impedance_values_;
+  Eigen::ArrayXd joint_damping_gains_;
+  std::array<double, 7> joint_impedance_values_;
   CollisionBehaviour collision_behaviour_;
   std::chrono::steady_clock::time_point last_command_;
   std::chrono::milliseconds command_timeout_ = std::chrono::milliseconds(500);
@@ -84,27 +84,27 @@ public:
 
   /**
    * @brief Set the joint damping gains.
-   * @param[in] damping_gains The desired array of damping gains per joint.
+   * @param[in] joint_damping_gains The desired array of damping gains per joint.
    */
-  void set_damping_gains(const Eigen::Array<double, 7, 1>& damping_gains);
+  void set_joint_damping(const Eigen::Array<double, 7, 1>& joint_damping_gains);
 
   /**
    * @brief Set the joint damping gains.
-   * @param[in] damping_gains The desired array of damping gains per joint.
+   * @param[in] joint_damping_gains The desired array of damping gains per joint.
    */
-  void set_damping_gains(const std::array<double, 7>& damping_gains);
+  void set_joint_damping(const std::array<double, 7>& joint_damping_gains);
 
   /**
    * @brief Set the joint impedance.
-   * @param[in] impedance_values The desired array of impedance values per joint.
+   * @param[in] joint_impedance_values The desired array of impedance values per joint.
    */
-  void set_impedance(const Eigen::Array<double, 7, 1>& impedance_values);
+  void set_joint_impedance(const Eigen::Array<double, 7, 1>& joint_impedance_values);
 
   /**
    * @brief Set the joint impedance.
-   * @param[in] impedance_values The desired array of impedance values per joint.
+   * @param[in] joint_impedance_values The desired array of impedance values per joint.
    */
-  void set_impedance(const std::array<double, 7>& impedance_values);
+  void set_joint_impedance(const std::array<double, 7>& joint_impedance_values);
 
   /**
    * @brief Set the collision behaviour.
