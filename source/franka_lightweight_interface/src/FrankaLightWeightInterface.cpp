@@ -262,11 +262,11 @@ void FrankaLightWeightInterface::run_joint_torques_controller() {
           std::vector<double> min_range = {-2.8973,	-1.7628,	-2.8973,	-3.0718,	-2.8973,	-0.0175,	-2.8973};
           std::vector<double> max_range = {2.8973, 1.7628,	2.8973,	-0.0698,	2.8973,	3.7525,	2.8973};
 
-          if (count > 3000){
+          if (count > 7000){
             std::random_device rd;  // Will be used to obtain a seed for the random number engine
             std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
 
-            float margin = 0.65;
+            float margin = 0.75;
             
             for(int i=0; i<7; i++){
               std::uniform_real_distribution<> dis(margin*min_range.at(i), margin*max_range.at(i));
@@ -282,7 +282,7 @@ void FrankaLightWeightInterface::run_joint_torques_controller() {
           // std::cout << (joint_target - this->state_.joint_state.get_positions()).transpose() << std::endl;
 
           Eigen::Matrix<double, 7, 7> stiffness = Eigen::Matrix<double, 7, 7>::Zero();
-          stiffness.diagonal() << 2, 2, 2, 2, 1, 1, 1;
+          stiffness.diagonal() << 2, 2, 1.7, 2, 1, 1, 1;
 
           Eigen::Matrix<double, 7, 1> newTorque;
           newTorque = stiffness*(joint_target - this->state_.joint_state.get_positions()) - 1*this->state_.joint_state.get_velocities();
@@ -311,6 +311,8 @@ void FrankaLightWeightInterface::run_joint_torques_controller() {
                         << this->state_.joint_state.get_positions().transpose() << " " 
                         << commandTorque.transpose() << " " 
                         << measured_joint_torque.transpose() << " " 
+                        << gravity.transpose() << " "
+                        << coriolis.transpose() << " "
                         << flattMass << std::endl;
 
 
