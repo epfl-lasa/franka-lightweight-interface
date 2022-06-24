@@ -39,3 +39,6 @@ install(TARGETS ${PROJECT_NAME}
 
 add_executable(example_joint_position_controller examples/joint_position_controller.cpp)
 target_link_libraries(example_joint_position_controller clproto cppzmq state_representation)
+
+add_executable(example_joint_velocity_controller examples/joint_velocity_controller.cpp)
+target_link_libraries(example_joint_velocity_controller clproto cppzmq state_representation)

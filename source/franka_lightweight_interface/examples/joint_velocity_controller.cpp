@@ -17,8 +17,7 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  double gain = 10.0;
-  double damping = 0.1;
+  double gain = 0.5;
 
   ::zmq::context_t context(1);
   ::zmq::socket_t subscriber, publisher;
@@ -27,7 +26,7 @@ int main(int argc, char** argv) {
   network_interfaces::zmq::StateMessage state;
   network_interfaces::zmq::CommandMessage command;
 
-  command.control_type = std::vector<int>{static_cast<int>(network_interfaces::control_type_t::EFFORT)};
+  command.control_type = std::vector<int>{static_cast<int>(network_interfaces::control_type_t::VELOCITY)};
   command.joint_state = state_representation::JointState::Zero("franka", 7);
 
   state_representation::JointPositions target;
@@ -39,13 +38,10 @@ int main(int argc, char** argv) {
         command.joint_state.set_zero();
       }
 
-      auto error = target.get_positions() - state.joint_state.get_positions();
-
-      auto torques = gain * error - damping * state.joint_state.get_velocities();
-      command.joint_state.set_torques(torques);
+      auto velocities = gain * (target.get_positions() - state.joint_state.get_positions());
+      command.joint_state.set_velocities(velocities);
 
       network_interfaces::zmq::send(command, publisher);
     }
   }
-
 }
