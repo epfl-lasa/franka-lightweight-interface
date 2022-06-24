@@ -14,10 +14,14 @@ static CollisionBehaviour default_collision_behaviour() {
           {{20.0, 20.0, 20.0, 25.0, 25.0, 25.0}}, {{20.0, 20.0, 20.0, 25.0, 25.0, 25.0}}};
 }
 
-static Eigen::Array<double, 7, 1> default_damping_gains() {
+static Eigen::Array<double, 7, 1> default_joint_damping_gains() {
   Eigen::ArrayXd gains = Eigen::ArrayXd(7);
   gains << 25.0, 25.0, 25.0, 25.0, 15.0, 15.0, 5.0;
   return gains;
+}
+
+static std::array<double, 7> default_joint_impedance_values() {
+  return {2000, 2000, 2000, 1500, 1500, 1000, 1000};
 }
 
 FrankaLightWeightInterface::FrankaLightWeightInterface(
@@ -31,7 +35,8 @@ FrankaLightWeightInterface::FrankaLightWeightInterface(
     command_uri_(std::move(command_uri)),
     zmq_context_(1),
     control_type_(network_interfaces::control_type_t::UNDEFINED),
-    damping_gains_(default_damping_gains()),
+    joint_damping_gains_(default_joint_damping_gains()),
+    joint_impedance_values_(default_joint_impedance_values()),
     collision_behaviour_(default_collision_behaviour()) {
 }
 
@@ -74,12 +79,24 @@ void FrankaLightWeightInterface::reset_command() {
   this->command_.joint_state.set_torques(Eigen::VectorXd::Zero(7));
 }
 
-void FrankaLightWeightInterface::set_damping_gains(const Eigen::Array<double, 7, 1>& damping_gains) {
-  this->damping_gains_ = damping_gains;
+void FrankaLightWeightInterface::set_joint_damping(const Eigen::Array<double, 7, 1>& joint_damping_gains) {
+  this->joint_damping_gains_ = joint_damping_gains;
 }
 
-void FrankaLightWeightInterface::set_damping_gains(const std::array<double, 7>& damping_gains) {
-  this->set_damping_gains(Eigen::ArrayXd::Map(damping_gains.data(), 7));
+void FrankaLightWeightInterface::set_joint_damping(const std::array<double, 7>& joint_damping_gains) {
+  this->set_joint_damping(Eigen::ArrayXd::Map(joint_damping_gains.data(), 7));
+}
+
+void FrankaLightWeightInterface::set_joint_impedance(const Eigen::Array<double, 7, 1>& joint_impedance_values) {
+  std::array<double, 7> values{};
+  for (std::size_t i = 0; i < 7; ++i) {
+    values.at(i) = joint_impedance_values(i);
+  }
+  this->set_joint_impedance(values);
+}
+
+void FrankaLightWeightInterface::set_joint_impedance(const std::array<double, 7>& joint_impedance_values) {
+  this->joint_impedance_values_ = joint_impedance_values;
 }
 
 void FrankaLightWeightInterface::set_collision_behaviour(
@@ -114,6 +131,10 @@ void FrankaLightWeightInterface::run_controller() {
           case network_interfaces::control_type_t::EFFORT:
             std::cout << "Starting joint torque controller..." << std::endl;
             this->run_joint_torques_controller();
+            break;
+          case network_interfaces::control_type_t::VELOCITY:
+            std::cout << "Starting joint velocity controller..." << std::endl;
+            this->run_joint_velocities_controller();
             break;
           default:
             std::cout << "Unimplemented control type! (" << this->control_type_ << ")" << std::endl;
@@ -208,6 +229,53 @@ void FrankaLightWeightInterface::run_state_publisher() {
   }
 }
 
+void FrankaLightWeightInterface::run_joint_velocities_controller() {
+  // Set additional parameters always before the control loop, NEVER in the control loop!
+
+  this->franka_robot_->setJointImpedance(this->joint_impedance_values_);
+
+  // Set collision behavior.
+  this->franka_robot_->setCollisionBehavior(
+      this->collision_behaviour_.ltta, this->collision_behaviour_.utta, this->collision_behaviour_.lttn,
+      this->collision_behaviour_.uttn, this->collision_behaviour_.lfta, this->collision_behaviour_.ufta,
+      this->collision_behaviour_.lftn, this->collision_behaviour_.uftn
+  );
+
+  try {
+    this->franka_robot_->control(
+        [this](
+            const franka::RobotState& robot_state, franka::Duration
+        ) -> franka::JointVelocities {
+          // check the local socket for a velocity command
+          this->poll_external_command();
+
+          if (this->control_type_ != network_interfaces::control_type_t::VELOCITY) {
+            if (this->control_type_ == network_interfaces::control_type_t::UNDEFINED) {
+              throw franka::ControlException("Control type reset!");
+            }
+            throw IncompatibleControlTypeException("Control type changed!");
+          }
+
+          // lock mutex
+          std::lock_guard<std::mutex> lock(this->get_mutex());
+          // extract current state
+          this->read_robot_state(robot_state);
+
+          std::array<double, 7> velocities{};
+          Eigen::VectorXd::Map(&velocities[0], 7) = this->command_.joint_state.get_velocities().array();
+
+          // write the state out to the local socket
+          this->publish_robot_state();
+
+          //return velocities;
+          return velocities;
+        }
+    );
+  } catch (const franka::Exception& e) {
+    std::cerr << e.what() << std::endl;
+  }
+}
+
 void FrankaLightWeightInterface::run_joint_torques_controller() {
   // Set additional parameters always before the control loop, NEVER in the control loop!
 
@@ -248,7 +316,7 @@ void FrankaLightWeightInterface::run_joint_torques_controller() {
 
           std::array<double, 7> torques{};
           Eigen::VectorXd::Map(&torques[0], 7) = this->command_.joint_state.get_torques().array()
-              - this->damping_gains_ * this->state_.joint_state.get_velocities().array() + coriolis.array();
+              - this->joint_damping_gains_ * this->state_.joint_state.get_velocities().array() + coriolis.array();
 
           // write the state out to the local socket
           this->publish_robot_state();
