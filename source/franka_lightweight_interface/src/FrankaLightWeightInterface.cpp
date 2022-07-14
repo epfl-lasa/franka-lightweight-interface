@@ -37,7 +37,7 @@ FrankaLightWeightInterface::FrankaLightWeightInterface(
     control_type_(network_interfaces::control_type_t::UNDEFINED),
     joint_damping_gains_(default_joint_damping_gains()),
     joint_impedance_values_(default_joint_impedance_values()),
-    collision_behaviour_(default_collision_behaviour()) {
+    collision_behaviour_(default_collision_behaviour()),
     previous_torque(Eigen::Vector<double, 7>::Zero()),
     joint_friction(Eigen::Vector<double, 7>::Zero()) {
 }
