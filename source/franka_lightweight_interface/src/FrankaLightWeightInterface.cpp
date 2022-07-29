@@ -259,11 +259,11 @@ void FrankaLightWeightInterface::run_joint_torques_controller() {
           static int count = 0;
           static Eigen::Matrix<double, 7, 1> joint_target;
 
-          // std::vector<double> min_range = {-2.8973,	-1.7628-0.6,	-2.8973-0.5,	-3.0718-0.6,	-2.8973,	-0.0175,	-2.8973};
-          // std::vector<double> max_range = {2.8973, 1.7628,	2.8973,	-0.0698+0.5,	2.8973,	3.7525+0.3,	2.8973};
+          std::vector<double> min_range = {-2.8973-1,	-1.7628-0.8,	-2.8973-1,	-3.0718-1.2,	-2.8973-1.5,	-0.0175,	-2.8973-1.5};
+          std::vector<double> max_range = {2.8973+1, 1.7628+0.8,	2.8973+1,	-0.0698-0.6,	2.8973+1.5,	3.7525+1.5,	2.8973+1.5};
 
-          std::vector<double> min_range = {-2.8973,	-1.7628,	-2.8973,	-3.0718,	-2.8973,	-0.0175,	-2.8973};
-          std::vector<double> max_range = {2.8973, 1.7628,	2.8973,	-0.0698,	2.8973,	3.7525,	2.8973};
+          // std::vector<double> min_range = {-2.8973,	-1.7628,	-2.8973,	-3.0718,	-2.8973,	-0.0175,	-2.8973};
+          // std::vector<double> max_range = {2.8973, 1.7628,	2.8973,	-0.0698,	2.8973,	3.7525,	2.8973};
 
           if (count > 1000){
             std::random_device rd;  // Will be used to obtain a seed for the random number engine
@@ -283,9 +283,11 @@ void FrankaLightWeightInterface::run_joint_torques_controller() {
 
           // PD control
           Eigen::Matrix<double, 7, 7> stiffness = Eigen::Matrix<double, 7, 7>::Zero();
-          stiffness.diagonal() << 2, 3, 1.7, 2, 1.3, 1.5, 1;
+          stiffness.diagonal() << 2, 3, 1.5, 2, 1.3, 1.5, 1;
+          Eigen::Matrix<double, 7, 7> damping = Eigen::Matrix<double, 7, 7>::Zero();
+          damping.diagonal() << 1.8, 1.65, 1.65, 1.4, 1.8, 1.6, 1.7;
           Eigen::Matrix<double, 7, 1> newTorque;
-          newTorque = 0.5*stiffness*(joint_target - this->state_.joint_state.get_positions()) - 2*this->state_.joint_state.get_velocities();
+          newTorque = stiffness*(joint_target - this->state_.joint_state.get_positions()) - damping*this->state_.joint_state.get_velocities();
 
           // table avoidance
           Eigen::Matrix<double, 7, 1> table_repulsion = this->state_.jacobian.data().transpose().col(2);
@@ -298,6 +300,15 @@ void FrankaLightWeightInterface::run_joint_torques_controller() {
           commandTorque = (1-alpha)*this->prevTorque + alpha*newTorque;
 
           this->prevTorque = commandTorque;
+
+          // // Generate sinus acceleration
+          // static double counter = 0;
+          Eigen::Matrix<double, 7, 1> desired_acceleration {0, 0, 0, 1, 0, 0, 0};
+          // desired_acceleration *= sin(6.14*1*counter);
+          // counter += 1e-3;
+
+          // Eigen::Matrix<double, 7, 1> commandTorque = this->state_.mass.get_value()*desired_acceleration;
+
   
           command_.joint_state.set_torques(commandTorque);
 
@@ -308,13 +319,14 @@ void FrankaLightWeightInterface::run_joint_torques_controller() {
           Eigen::Array<double, 7, 1> phi_4 {0.895, 0.616, 0.637, 0.4, 0.308, 0.137, 0.141};
           Eigen::Array<double, 7, 1> phi_5 {-0.171, -1.053, -0.033, -0.322, -0.061, 0.028, -0.042};
 
-          Eigen::Array<double, 7, 1> velocity = (this->state_.joint_state.get_velocities().array().abs()<0.005).select(0.,this->state_.joint_state.get_velocities().array());
+          // Eigen::Array<double, 7, 1> velocity = (this->state_.joint_state.get_velocities().array().abs()<0.005).select(0.,this->state_.joint_state.get_velocities().array());
+          Eigen::Array<double, 7, 1> velocity = this->state_.joint_state.get_velocities().array();
           Eigen::Array<double, 7, 1> friction_torque = phi_1/( 1+(-phi_2*velocity).exp() ) + phi_3 + phi_4*velocity + phi_5*this->state_.joint_state.get_positions().array();
 
 
           std::array<double, 7> torques{};
           Eigen::VectorXd::Map(&torques[0], 7) = this->command_.joint_state.get_torques().array()
-              - this->damping_gains_ * this->state_.joint_state.get_velocities().array() + coriolis.array() + friction_torque;
+              - this->damping_gains_ * this->state_.joint_state.get_velocities().array() + coriolis.array();// + friction_torque;
 
  
           Eigen::Matrix<double, 7, 1> measured_joint_torque = this->state_.joint_state.get_torques() - coriolis - gravity;
@@ -323,9 +335,7 @@ void FrankaLightWeightInterface::run_joint_torques_controller() {
           this->logFile << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch()).count() << " " 
                         << this->state_.joint_state.get_positions().transpose() << " " 
                         << commandTorque.transpose() << " " 
-                        << measured_joint_torque.transpose() << " " 
-                        << gravity.transpose() << " "
-                        << coriolis.transpose() << std::endl;
+                        << desired_acceleration.transpose() << std::endl;
 
 
 
