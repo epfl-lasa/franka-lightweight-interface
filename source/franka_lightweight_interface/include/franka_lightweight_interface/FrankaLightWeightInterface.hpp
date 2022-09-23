@@ -12,6 +12,8 @@
 #include <franka/robot.h>
 #include <network_interfaces/zmq/network.h>
 
+#include <ruckig/ruckig.hpp>
+
 namespace frankalwi {
 
 struct CollisionBehaviour {
@@ -52,6 +54,10 @@ private:
   std::chrono::steady_clock::time_point last_command_;
   std::chrono::milliseconds command_timeout_ = std::chrono::milliseconds(500);
   std::mutex mutex_;
+
+  std::string fsm_state;
+  ruckig::Trajectory<7> trajectory;
+  std::chrono::time_point<std::chrono::system_clock> time_init;
 
   void print_state() const;
 

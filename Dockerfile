@@ -8,6 +8,12 @@ RUN cd libfranka && git checkout 0.8.0 && git submodule update && mkdir build
 WORKDIR /source/libfranka/build
 RUN cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF .. && cmake --build . && make -j && make install -j && ldconfig
 
+WORKDIR /source
+RUN git clone https://github.com/pantor/ruckig.git && cd ruckig
+RUN mkdir -p build
+WORKDIR /source/ruckig/build
+RUN cmake -DCMAKE_BUILD_TYPE=Release .. && make && make install
+
 WORKDIR ${HOME}
 RUN rm -rf /source
 

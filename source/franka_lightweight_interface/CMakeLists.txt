@@ -21,6 +21,8 @@ find_library(clproto REQUIRED)
 find_library(network_interfaces REQUIRED)
 find_library(state_representation REQUIRED)
 
+find_package(ruckig REQUIRED)
+
 include_directories(
 		include
 )
@@ -31,7 +33,7 @@ set(CORE_SOURCES
 )
 
 add_executable(${PROJECT_NAME} ${CORE_SOURCES})
-target_link_libraries(${PROJECT_NAME} franka clproto cppzmq state_representation)
+target_link_libraries(${PROJECT_NAME} franka clproto cppzmq state_representation ruckig::ruckig)
 
 install(TARGETS ${PROJECT_NAME}
 		RUNTIME DESTINATION bin

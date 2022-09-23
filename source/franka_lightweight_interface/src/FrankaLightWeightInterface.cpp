@@ -34,7 +34,7 @@ FrankaLightWeightInterface::FrankaLightWeightInterface(
     state_uri_(std::move(state_uri)),
     command_uri_(std::move(command_uri)),
     zmq_context_(1),
-    control_type_(network_interfaces::control_type_t::UNDEFINED),
+    control_type_(network_interfaces::control_type_t::EFFORT),
     joint_damping_gains_(default_joint_damping_gains()),
     joint_impedance_values_(default_joint_impedance_values()),
     collision_behaviour_(default_collision_behaviour()) {
@@ -70,6 +70,9 @@ void FrankaLightWeightInterface::init() {
   this->command_.joint_state = state_representation::JointState("franka", 7);
 
   this->last_command_ = std::chrono::steady_clock::now();
+
+  fsm_state = "IDLE";
+
 }
 
 void FrankaLightWeightInterface::reset_command() {
@@ -305,6 +308,46 @@ void FrankaLightWeightInterface::run_joint_torques_controller() {
           std::lock_guard<std::mutex> lock(this->get_mutex());
           // extract current state
           this->read_robot_state(robot_state);
+
+
+          if (fsm_state.compare("IDLE") == 0){
+
+            // Init ruckig
+            ruckig::InputParameter<7> input;
+            input.current_position = robot_state.q;
+            input.current_velocity = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+            input.current_acceleration = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+
+            input.target_position = {0.0, 0.0, 0.0, -1.5, 0.0, 1.5, 0.0};
+            input.target_velocity = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+            input.target_acceleration = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+
+            input.max_velocity = {1.74, 1.74, 1.74, 1.74, 2.088, 2.088, 2.088}; // 80% of max
+            input.max_acceleration = {6.0, 3, 4.0, 5.0, 6.0, 8.0, 8.0};
+            input.max_jerk = {750, 375, 500, 625, 750, 1000, 1000};
+
+            // We don't need to pass the control rate (cycle time) when using only offline features
+            ruckig::Ruckig<7> otg;
+
+            // Calculate the trajectory in an offline manner (outside of the control loop)
+            otg.calculate(input, trajectory);
+            time_init = std::chrono::system_clock::now();
+
+            fsm_state = "CONTROL";
+          }
+
+          else if (fsm_state.compare("CONTROL") == 0){
+
+            auto time_now = std::chrono::system_clock::now();
+            double dT = 1e-6*std::chrono::duration_cast<std::chrono::microseconds>(time_now - time_init).count();
+
+            std::array<double, 7> new_position, new_velocity, new_acceleration;
+            trajectory.at_time(dT, new_position, new_velocity, new_acceleration);
+
+            std::cout << Eigen::Map<Eigen::Matrix<double, 1, 7> >(new_position.data()) << std::endl;
+
+            if (dT > trajectory.get_duration()) fsm_state = "SLOWING";
+          }
 
           // get the coriolis array
           std::array<double, 7> coriolis_array = this->franka_model_->coriolis(robot_state);
