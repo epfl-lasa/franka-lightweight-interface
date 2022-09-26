@@ -29,6 +29,7 @@ DOCKER_BUILDKIT=1 docker build "${BUILD_FLAGS[@]}" . || exit 1
 
 docker run -it --rm --privileged --cap-add=SYS_NICE \
   --net=host \
+  -v /home/lasa/Workspace/franka-lightweight-interface/source/franka_lightweight_interface:/home/developer/franka_lightweight_interface \
   --ulimit rtprio=99:99 \
   --ulimit memlock=102400:102400 \
   "${IMAGE_NAME}:${IMAGE_TAG}"

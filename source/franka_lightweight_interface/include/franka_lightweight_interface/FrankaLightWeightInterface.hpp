@@ -1,6 +1,8 @@
 #pragma once
 
 #include <iostream>
+#include <fstream>
+
 #include <mutex>
 #include <thread>
 #include <chrono>
@@ -58,6 +60,7 @@ private:
   std::string fsm_state;
   ruckig::Trajectory<7> trajectory;
   std::chrono::time_point<std::chrono::system_clock> time_init;
+  std::ofstream logFile;
 
   void print_state() const;
 

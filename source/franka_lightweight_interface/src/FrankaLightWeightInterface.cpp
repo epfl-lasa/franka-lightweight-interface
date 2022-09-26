@@ -46,6 +46,8 @@ void FrankaLightWeightInterface::init() {
   this->franka_model_ = std::make_unique<franka::Model>(this->franka_robot_->loadModel());
   this->connected_ = true;
 
+  this->logFile.open("franka_lightweight_interface/analysis/data_control.txt");
+
   // create zmq connections with an external controller
   // TODO: find a better way to pass in port number
   network_interfaces::zmq::configure_subscriber(this->zmq_context_, this->zmq_subscriber_, this->command_uri_, false);
@@ -258,11 +260,84 @@ void FrankaLightWeightInterface::run_joint_velocities_controller() {
             }
             throw IncompatibleControlTypeException("Control type changed!");
           }
-
           // lock mutex
           std::lock_guard<std::mutex> lock(this->get_mutex());
           // extract current state
           this->read_robot_state(robot_state);
+
+
+          if (fsm_state.compare("IDLE") == 0){
+
+            // Init ruckig
+            ruckig::InputParameter<7> input;
+            input.current_position = robot_state.q;
+            input.current_velocity = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+            input.current_acceleration = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+
+            input.target_position = {0.0, 0.0, 0.0, -1.5, 0.0, 1.5, 0.0};
+            input.target_velocity = {1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5};
+            input.target_acceleration = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+
+            input.max_velocity = {1.74, 1.74, 1.74, 1.74, 2.088, 2.088, 2.088}; // 80% of max
+            input.max_acceleration = {6.0, 3, 4.0, 5.0, 6.0, 8.0, 8.0};
+            input.max_jerk = {750, 375, 500, 625, 750, 1000, 1000};
+
+            // We don't need to pass the control rate (cycle time) when using only offline features
+            ruckig::Ruckig<7> otg;
+
+            // Calculate the trajectory in an offline manner (outside of the control loop)
+            otg.calculate(input, trajectory);
+            time_init = std::chrono::system_clock::now();
+
+            fsm_state = "CONTROL";
+          }
+
+          else if (fsm_state.compare("CONTROL") == 0){
+
+            auto time_now = std::chrono::system_clock::now();
+            double dT = 1e-6*std::chrono::duration_cast<std::chrono::microseconds>(time_now - time_init).count();
+
+            std::array<double, 7> new_position, new_velocity, new_acceleration;
+            trajectory.at_time(dT, new_position, new_velocity, new_acceleration);
+
+            Eigen::Matrix<double, 7, 1> command_velocity;
+
+            // Compute torque with PD controller
+            Eigen::Matrix<double, 7, 7> stiffness = Eigen::Matrix<double, 7, 7>::Zero();
+            stiffness.diagonal() << 60., 60., 60., 50., 35., 25., 15. ;
+            Eigen::Matrix<double, 7, 7> damping = Eigen::Matrix<double, 7, 7>::Zero();
+            damping.diagonal() << 15, 18, 15, 15, 4, 4, 3;
+
+            Eigen::Matrix<double, 7, 1> position_error =  Eigen::Map<Eigen::Matrix<double, 7, 1> >(new_position.data()) - this->state_.joint_state.get_positions();
+            Eigen::Matrix<double, 7, 1> velocity_error =  Eigen::Map<Eigen::Matrix<double, 7, 1> >(new_velocity.data()) - this->state_.joint_state.get_velocities();
+            Eigen::Matrix<double, 7, 1> acceleration_ff =  this->state_.mass.get_value() * Eigen::Map<Eigen::Matrix<double, 7, 1> >(new_acceleration.data());
+
+            command_velocity = Eigen::Map<Eigen::Matrix<double, 7, 1> >(new_velocity.data()) + 1*stiffness*position_error + 0*acceleration_ff;
+            this->command_.joint_state.set_velocities(command_velocity);
+
+            // Write data to txt file
+            this->logFile << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch()).count() << " " 
+                          << this->state_.joint_state.get_positions().transpose() << " " 
+                          << this->state_.joint_state.get_velocities().transpose() << " " 
+                          << Eigen::Map<Eigen::Matrix<double, 1, 7> >(new_position.data()) << " "
+                          << Eigen::Map<Eigen::Matrix<double, 1, 7> >(new_velocity.data()) << std::endl;
+
+            if (dT > trajectory.get_duration()) fsm_state = "SLOWING";
+          }
+
+          else if (fsm_state.compare("SLOWING") == 0){
+
+            Eigen::Matrix<double, 7, 1> command_velocity;
+            
+            command_velocity = Eigen::Matrix<double, 7, 1>::Zero();
+            
+            this->command_.joint_state.set_velocities(command_velocity);
+          }
+
+
+
+
+
 
           std::array<double, 7> velocities{};
           Eigen::VectorXd::Map(&velocities[0], 7) = this->command_.joint_state.get_velocities().array();
@@ -309,7 +384,7 @@ void FrankaLightWeightInterface::run_joint_torques_controller() {
           // extract current state
           this->read_robot_state(robot_state);
 
-
+          
           if (fsm_state.compare("IDLE") == 0){
 
             // Init ruckig
@@ -319,7 +394,7 @@ void FrankaLightWeightInterface::run_joint_torques_controller() {
             input.current_acceleration = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 
             input.target_position = {0.0, 0.0, 0.0, -1.5, 0.0, 1.5, 0.0};
-            input.target_velocity = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+            input.target_velocity = {1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5};
             input.target_acceleration = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 
             input.max_velocity = {1.74, 1.74, 1.74, 1.74, 2.088, 2.088, 2.088}; // 80% of max
@@ -344,9 +419,43 @@ void FrankaLightWeightInterface::run_joint_torques_controller() {
             std::array<double, 7> new_position, new_velocity, new_acceleration;
             trajectory.at_time(dT, new_position, new_velocity, new_acceleration);
 
-            std::cout << Eigen::Map<Eigen::Matrix<double, 1, 7> >(new_position.data()) << std::endl;
+            Eigen::Matrix<double, 7, 1> command_torque;
+
+            // Compute torque with PD controller
+            Eigen::Matrix<double, 7, 7> stiffness = Eigen::Matrix<double, 7, 7>::Zero();
+            stiffness.diagonal() << 66., 66., 66., 54., 40., 30., 15. ;
+            Eigen::Matrix<double, 7, 7> damping = Eigen::Matrix<double, 7, 7>::Zero();
+            damping.diagonal() << 15, 18, 15, 15, 4, 4, 3;
+
+            Eigen::Matrix<double, 7, 1> position_error =  Eigen::Map<Eigen::Matrix<double, 7, 1> >(new_position.data()) - this->state_.joint_state.get_positions();
+            Eigen::Matrix<double, 7, 1> velocity_error =  Eigen::Map<Eigen::Matrix<double, 7, 1> >(new_velocity.data()) - this->state_.joint_state.get_velocities();
+            Eigen::Matrix<double, 7, 1> acceleration_ff =  this->state_.mass.get_value() * Eigen::Map<Eigen::Matrix<double, 7, 1> >(new_acceleration.data());
+
+            command_torque = 7*stiffness*position_error + 3*damping*velocity_error + acceleration_ff;
+            this->command_.joint_state.set_torques(command_torque);
+            
+            // std::cout << position_error.transpose() << std::endl;
+            // std::cout << velocity_error.transpose() << std::endl;
+            // std::cout << command_torque.transpose() << std::endl<< std::endl;
+            // std::cout << acceleration_ff.transpose() << std::endl;
+
+            // Write data to txt file
+            this->logFile << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch()).count() << " " 
+                          << this->state_.joint_state.get_positions().transpose() << " " 
+                          << this->state_.joint_state.get_velocities().transpose() << " " 
+                          << Eigen::Map<Eigen::Matrix<double, 1, 7> >(new_position.data()) << " "
+                          << Eigen::Map<Eigen::Matrix<double, 1, 7> >(new_velocity.data()) << std::endl;
 
             if (dT > trajectory.get_duration()) fsm_state = "SLOWING";
+          }
+
+          else if (fsm_state.compare("SLOWING") == 0){
+
+            Eigen::Matrix<double, 7, 1> command_torque;
+            
+            command_torque = - 10 *this->state_.joint_state.get_velocities();
+            
+            this->command_.joint_state.set_torques(command_torque);
           }
 
           // get the coriolis array
