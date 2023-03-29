@@ -207,6 +207,11 @@ void FrankaLightWeightInterface::read_robot_state(const franka::RobotState& robo
   std::array<double, 49> current_mass_array = this->franka_model_->mass(robot_state);
   this->state_.mass.set_value(Eigen::Map<const Eigen::Matrix<double, 7, 7>>(current_mass_array.data()));
 
+  // extract external force
+  this->state_.external_wrench.set_data(Eigen::MatrixXd::Map(robot_state.O_F_ext_hat_K.data(), 6, 1));
+  this->state_.external_torque.set_value(Eigen::MatrixXd::Map(robot_state.tau_ext_hat_filtered.data(), 7, 1));
+
+
   // get the twist from jacobian and current joint velocities
   this->state_.ee_state.set_twist(this->state_.jacobian * this->state_.joint_state.get_velocities());
 }
