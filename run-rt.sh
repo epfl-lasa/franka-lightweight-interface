@@ -2,6 +2,8 @@ IMAGE_NAME=epfl-lasa/franka-lightweight-interface
 IMAGE_TAG=runtime
 BUILD_FLAGS=()
 
+USER=root
+
 HELP_MESSAGE="Usage: ./run-rt.sh
 Build and run a runtime docker container with realtime permissions.
 Options:
@@ -24,7 +26,7 @@ done
 BUILD_FLAGS+=(--target "${IMAGE_TAG}")
 BUILD_FLAGS+=(-t "${IMAGE_NAME}":"${IMAGE_TAG}")
 
-docker pull ghcr.io/aica-technology/network-interfaces
+# docker pull ghcr.io/aica-technology/network-interfaces
 DOCKER_BUILDKIT=1 docker build "${BUILD_FLAGS[@]}" . || exit 1
 
 docker run -it --rm --privileged --cap-add=SYS_NICE \
