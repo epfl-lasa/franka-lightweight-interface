@@ -1,4 +1,4 @@
-FROM ghcr.io/aica-technology/network-interfaces as source-dependencies
+FROM ghcr.io/aica-technology/network-interfaces@sha256:a45d9fc61afa2cb92062ca4efc136863829c9f9c0c5ff12c4fd02ee029f6dbc1 as source-dependencies
 
 RUN apt-get update && apt-get install -y libpoco-dev
 

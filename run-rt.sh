@@ -24,7 +24,7 @@ done
 BUILD_FLAGS+=(--target "${IMAGE_TAG}")
 BUILD_FLAGS+=(-t "${IMAGE_NAME}":"${IMAGE_TAG}")
 
-docker pull ghcr.io/aica-technology/network-interfaces
+docker pull ghcr.io/aica-technology/network-interfaces@sha256:a45d9fc61afa2cb92062ca4efc136863829c9f9c0c5ff12c4fd02ee029f6dbc1
 DOCKER_BUILDKIT=1 docker build "${BUILD_FLAGS[@]}" . || exit 1
 
 docker run -it --rm --privileged --cap-add=SYS_NICE \
