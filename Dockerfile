@@ -4,7 +4,7 @@ RUN apt-get update && apt-get install -y libpoco-dev
 
 WORKDIR /source
 RUN git clone --recursive https://github.com/frankaemika/libfranka
-RUN cd libfranka && git checkout 0.9.0 && git submodule update && mkdir build
+RUN cd libfranka && git checkout f1f46fb008a37eb0d1dba00c971ff7e5a7bfbfd3 && git submodule update && mkdir build
 WORKDIR /source/libfranka/build
 RUN cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF .. && cmake --build . && make -j && make install -j && ldconfig
 

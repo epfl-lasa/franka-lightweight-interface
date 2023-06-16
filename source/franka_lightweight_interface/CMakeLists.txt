@@ -14,7 +14,7 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   	add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-find_package(Franka 0.9.0 REQUIRED)
+find_package(Franka 0.8.0 REQUIRED)
 find_package(network_interfaces REQUIRED)
 
 include_directories(
