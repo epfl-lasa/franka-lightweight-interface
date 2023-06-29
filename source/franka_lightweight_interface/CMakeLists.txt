@@ -14,12 +14,8 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   	add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-find_package(cppzmq REQUIRED)
-find_package(Eigen3 REQUIRED)
 find_package(Franka 0.8.0 REQUIRED)
-find_library(clproto REQUIRED)
-find_library(network_interfaces REQUIRED)
-find_library(state_representation REQUIRED)
+find_package(network_interfaces REQUIRED)
 
 include_directories(
 		include
@@ -31,14 +27,14 @@ set(CORE_SOURCES
 )
 
 add_executable(${PROJECT_NAME} ${CORE_SOURCES})
-target_link_libraries(${PROJECT_NAME} franka clproto cppzmq state_representation)
+target_link_libraries(${PROJECT_NAME} franka ${network_interfaces_LIBRARIES})
 
 install(TARGETS ${PROJECT_NAME}
 		RUNTIME DESTINATION bin
 )
 
 add_executable(example_joint_position_controller examples/joint_position_controller.cpp)
-target_link_libraries(example_joint_position_controller clproto cppzmq state_representation)
+target_link_libraries(example_joint_position_controller ${network_interfaces_LIBRARIES})
 
 add_executable(example_joint_velocity_controller examples/joint_velocity_controller.cpp)
-target_link_libraries(example_joint_velocity_controller clproto cppzmq state_representation)
+target_link_libraries(example_joint_velocity_controller ${network_interfaces_LIBRARIES})

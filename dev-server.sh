@@ -47,7 +47,7 @@ BUILD_FLAGS+=(--target "${IMAGE_STAGE}")
 BUILD_FLAGS+=(-t "${IMAGE_NAME}":"${IMAGE_STAGE}")
 PUBLIC_KEY=$(cat "${SSH_KEY_FILE}")
 
-docker pull ghcr.io/aica-technology/network-interfaces
+docker pull ghcr.io/aica-technology/network-interfaces:v1.2
 DOCKER_BUILDKIT=1 docker build "${BUILD_FLAGS[@]}" . || exit 1
 
 COMMAND_FLAGS=()
