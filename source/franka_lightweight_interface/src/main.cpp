@@ -100,14 +100,14 @@ int main(int argc, char **argv)
   if (atof(argv[1]) == 16)
   {
     robot_ip = "172.16.0.2";
-    state_uri = "0.0.0.0:1701";
-    command_uri = "0.0.0.0:1702";
+    std::string state_uri = "0.0.0.0:1601";
+    std::string command_uri = "0.0.0.0:1602";
   }
   else if (atof(argv[1]) == 17)
   {
     robot_ip = "172.16.0.1";
-    state_uri = "0.0.0.0:1701";
-    command_uri = "0.0.0.0:1702";
+    std::string state_uri = "0.0.0.0:1601";
+    std::string command_uri = "0.0.0.0:1602";
   }
   else
   {
