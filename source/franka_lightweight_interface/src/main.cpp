@@ -109,6 +109,18 @@ int main(int argc, char **argv)
     std::string state_uri = "0.0.0.0:1601";
     std::string command_uri = "0.0.0.0:1602";
   }
+  if (atof(argv[1]) == 18)
+  {
+    robot_ip = "192.168.1.187";
+    std::string state_uri = "0.0.0.0:1601";
+    std::string command_uri = "0.0.0.0:1602";
+  }
+  else if (atof(argv[1]) == 19)
+  {
+    robot_ip = "172.168.2.188";
+    std::string state_uri = "0.0.0.0:1601";
+    std::string command_uri = "0.0.0.0:1602";
+  }  
   else
   {
     std::cerr << "This robot is unknown, choose either '16' or '17'." << std::endl
